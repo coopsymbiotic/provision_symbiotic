@@ -40,7 +40,7 @@ function drush_provision_symbiotic_login() {
   drush_log(dt('Login url: !onetime', array('!onetime' => $onetime)), 'success');
 
   if (drush_drupal_major_version() >= 7) {
-    drupal_session_destroy_uid(1);
+    drupal_session_destroy_uid(2);
   }
   else {
     // valid for d5 and d6
