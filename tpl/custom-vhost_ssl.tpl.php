@@ -1,4 +1,8 @@
 # [ML] #239 Always bind the '*' IP so that we bind both IPv6 and IPv4.
+# ssl enabled: <?php print $this->ssl_enabled . "\n"; ?>
+#
+# ssl key: <?php print $this->ssl_key . "\n"; ?>
+#
 <?php if ($this->ssl_enabled && $this->ssl_key) : ?>
 <VirtualHost <?php print "*:{$http_ssl_port}"; ?>>
   <?php if ($this->site_mail) : ?>
