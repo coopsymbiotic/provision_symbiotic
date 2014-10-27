@@ -66,3 +66,42 @@ function provision_symbiotic_provision_config_load_templates($config) {
     return $file;
   }
 }
+
+/**
+ * Implements hook_drush_init().
+ */
+function provision_symbiotic_drush_init() {
+  // Register our service classes for autoloading.
+  provision_symbiotic_provision_register_autoload();
+}
+
+/**
+ * Register our directory as a place to find Provision classes.
+ *
+ * This allows Provision to autoload our classes, so that we don't need to
+ * specifically include the files before we use the class.
+ */
+function provision_symbiotic_provision_register_autoload() {
+  static $loaded = FALSE;
+  if (!$loaded) {
+    $loaded = TRUE;
+    $list = drush_commandfile_list();
+    $provision_dir = dirname($list['provision']);
+    include_once($provision_dir . '/provision.inc');
+    include_once($provision_dir . '/provision.service.inc');
+    provision_autoload_register_prefix('Provision_', dirname(__FILE__));
+  }
+}
+
+/**
+ * Expose the service type this extension defines to provision.
+ *
+ * @return
+ *   An array with the service type the key, and the default implementation the value.
+ */
+function provision_symbiotic_provision_services() {
+  provision_symbiotic_provision_register_autoload();
+  return array(
+    'symbiotic' => NULL,
+  );
+}
