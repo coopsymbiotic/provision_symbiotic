@@ -20,8 +20,15 @@ function provision_symbiotic_provision_apache_vhost_config($uri, $data = null) {
  */
 function drush_provision_symbiotic_post_provision_verify($url = NULL) {
   if (d()->type == 'site') {
-    // Only do the initial configuration once.
+    // The "verify" task can run regularly. Check to make sure we only run once,
+    // after the initial clone.
     if (variable_get('hosting_restapi_initial_done', NULL)) {
+      return;
+    }
+
+    // We can't auto-configure sites without a token.
+    // This includes the model site, the hostmaster, or sites not managed through hosting_restapi.
+    if (! d()->hosting_restapi_token) {
       return;
     }
 
