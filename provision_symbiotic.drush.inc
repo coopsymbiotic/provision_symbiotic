@@ -62,7 +62,12 @@ function drush_provision_symbiotic_login() {
 function provision_symbiotic_provision_config_load_templates($config) {
   if (is_a($config, 'Provision_Config_Apache_Ssl_Site')) {
     // c.f. #239, for IP vhost override.
-    $file = dirname(__FILE__) . '/tpl/custom-vhost_ssl.tpl.php';
+    $file = dirname(__FILE__) . '/tpl/custom-apache-vhost_ssl.tpl.php';
+    return $file;
+  }
+  if (is_a($config, 'Provision_Config_Nginx_Ssl_Site')) {
+    // c.f. #239, for IP vhost override.
+    $file = dirname(__FILE__) . '/tpl/custom-nginx-vhost_ssl.tpl.php';
     return $file;
   }
 }
