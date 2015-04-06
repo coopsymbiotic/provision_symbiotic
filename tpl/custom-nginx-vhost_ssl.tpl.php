@@ -124,5 +124,6 @@ server {
 
 <?php
   // Generate the standard virtual host too.
-  include(provision_class_directory('Provision_Config_Nginx_Site') . '/vhost.tpl.php');
+  // include(provision_class_directory('Provision_Config_Nginx_Site') . '/vhost.tpl.php');
+  include('/var/aegir/.drush/provision_symbiotic/tpl/custom-nginx-vhost.tpl.php');
 ?>
