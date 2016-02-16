@@ -105,7 +105,7 @@ if ($nginx_has_upload_progress) {
   lingering_timeout                5;
   fastcgi_connect_timeout        10s;
   fastcgi_send_timeout          180s;
-  fastcgi_read_timeout          180s;
+  fastcgi_read_timeout          600s;
 
  ## Open File Performance
   open_file_cache max=8000 inactive=30s;
