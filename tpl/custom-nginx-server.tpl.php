@@ -1,4 +1,5 @@
 # Aegir web server main configuration file
+# SymbioTIC override from provision_symbiotic
 
 #######################################################
 ###  nginx.conf main

@@ -75,6 +75,14 @@ function provision_symbiotic_provision_config_load_templates($config) {
     $file = dirname(__FILE__) . '/tpl/custom-nginx-vhost.tpl.php';
     return $file;
   }
+  elseif (is_a($config, 'Provision_Config_Nginx_Server')) {
+    $file = dirname(__FILE__) . '/tpl/custom-nginx-server.tpl.php';
+    return $file;
+  }
+  elseif (is_a($config, 'Provision_Config_Nginx_Ssl_Server')) {
+    $file = dirname(__FILE__) . '/tpl/custom-nginx-server_ssl.tpl.php';
+    return $file;
+  }
 }
 
 /**

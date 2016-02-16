@@ -1,4 +1,4 @@
-<?php include(provision_class_directory('Provision_Config_Nginx_Server') . '/server.tpl.php'); ?>
+<?php include('/var/aegir/.drush/provision_symbiotic/tpl/custom-nginx-server.tpl.php'); ?>
 
 #######################################################
 ###  nginx default ssl server
