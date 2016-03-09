@@ -78,9 +78,7 @@ if ($nginx_has_upload_progress) {
  ## Size Limits
   client_body_buffer_size        64k;
   client_header_buffer_size      32k;
-<?php if ($satellite_mode == 'boa'): ?>
   client_max_body_size          100m;
-<?php endif; ?>
   connection_pool_size           256;
   fastcgi_buffer_size           128k;
   fastcgi_buffers             256 4k;
