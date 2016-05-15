@@ -20,6 +20,23 @@ function provision_symbiotic_provision_apache_vhost_config($uri, $data = null) {
  */
 function drush_provision_symbiotic_post_provision_verify($url = NULL) {
   if (d()->type == 'site') {
+    // Make sure that CiviCRM path/url settings are correct.
+    $root = d()->root;
+    $host = d()->uri;
+
+    Civi::settings()->set('userFrameworkResourceURL', "https://$host/sites/all/modules/civicrm");
+    Civi::settings()->set('uploadDir', "$root/sites/$host/files/civicrm/upload/");
+    Civi::settings()->set('customFileUploadDir', "$root/sites/$host/files/civicrm/custom/");
+
+    Civi::settings()->set('customPHPPathDir', NULL);
+    Civi::settings()->set('customTemplateDir', NULL);
+
+    Civi::settings()->set('extensionsDir', "$root/sites/$host/modules/extensions/");
+    Civi::settings()->set('extensionsURL', "https://$host/sites/$host/modules/extensions");
+
+    Civi::settings()->set('imageUploadDir', "$root/sites/$host/files/civicrm/persist/contribute");
+    Civi::settings()->set('imageUploadURL', "https://$host/sites/$host/files/civicrm/persist/contribute");
+
     // The "verify" task can run regularly. Check to make sure we only run once,
     // after the initial clone.
     if (variable_get('hosting_restapi_initial_done', NULL)) {
