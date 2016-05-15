@@ -41,6 +41,6 @@ https://www.symbiotic.coop
 Copyright
 =========
 
-Copyright (C) 2013-2015 Mathieu Lutfy (mathieu@bidon.ca)
+Copyright (C) 2013-2016 Mathieu Lutfy (mathieu@symbiotic.coop)
 
 License: GPL v3 or later. http://www.gnu.org/copyleft/gpl.html
