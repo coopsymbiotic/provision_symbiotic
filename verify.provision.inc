@@ -20,6 +20,12 @@ function provision_symbiotic_provision_apache_vhost_config($uri, $data = null) {
  */
 function drush_provision_symbiotic_post_provision_verify($url = NULL) {
   if (d()->type == 'site') {
+    // Only run on CiviCRM sites.
+    // For example, the "hostmaster" site does not run CiviCRM.
+    if (! function_exists('Civi')) {
+      return;
+    }
+
     // Make sure that CiviCRM path/url settings are correct.
     $root = d()->root;
     $host = d()->uri;
