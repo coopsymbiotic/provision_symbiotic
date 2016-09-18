@@ -1,6 +1,8 @@
 <?php
 
 /**
+ * Implements hook_provision_apache_vhost_config().
+ *
  * Inject the relevant Apache configuration in the site vhost
  */
 function provision_symbiotic_provision_apache_vhost_config($uri, $data = null) {
@@ -16,7 +18,7 @@ function provision_symbiotic_provision_apache_vhost_config($uri, $data = null) {
 }
 
 /**
- * Implements hook_provision_apache_vhost_config().
+ * Implements hook_provision_nginx_vhost_config().
  *
  * Inject Nginx configuration in the site vhost.
  */
