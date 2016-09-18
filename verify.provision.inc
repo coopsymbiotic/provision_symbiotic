@@ -16,6 +16,23 @@ function provision_symbiotic_provision_apache_vhost_config($uri, $data = null) {
 }
 
 /**
+ * Implements hook_provision_apache_vhost_config().
+ *
+ * Inject Nginx configuration in the site vhost.
+ */
+function provision_symbiotic_provision_nginx_vhost_config($uri, $data = null) {
+  // This is redundant with hosting_https, but we are not using it
+  // everywhere yet.
+  $htaccess =
+      "  location ^~ /.well-known/acme-challenge {\n"
+    . "    alias /var/aegir/config/letsencrypt.d/well-known/acme-challenge;\n"
+    . "    try_files \$uri 404;\n"
+    . "  }\n\n";
+
+  return $htaccess;
+}
+
+/**
  * Implements hook_post_provision_verify().
  */
 function drush_provision_symbiotic_post_provision_verify($url = NULL) {
