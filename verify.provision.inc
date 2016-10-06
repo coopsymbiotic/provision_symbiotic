@@ -58,8 +58,14 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
     Civi::settings()->set('customPHPPathDir', NULL);
     Civi::settings()->set('customTemplateDir', NULL);
 
-    Civi::settings()->set('extensionsDir', "$root/sites/$host/modules/extensions/");
-    Civi::settings()->set('extensionsURL', "https://$host/sites/$host/modules/extensions");
+    $extensions_suffix = 'modules/extensions';
+
+    if (file_exists("$root/sites/$host/modules/civi-extensions/")) {
+      $extensions_suffix = 'modules/civi-extensions';
+    }
+
+    Civi::settings()->set('extensionsDir', "$root/sites/$host/$extensions_suffix/");
+    Civi::settings()->set('extensionsURL', "https://$host/sites/$host/$extensions_suffix");
 
     Civi::settings()->set('imageUploadDir', "$root/sites/$host/files/civicrm/persist/contribute");
     Civi::settings()->set('imageUploadURL', "https://$host/sites/$host/files/civicrm/persist/contribute");
