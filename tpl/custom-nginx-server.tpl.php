@@ -97,14 +97,14 @@ if ($nginx_has_upload_progress) {
 <?php endif; ?>
 
  ## Timeouts
-  client_body_timeout            180;
-  client_header_timeout          180;
-  send_timeout                   180;
+  client_body_timeout            900;
+  client_header_timeout          900;
+  send_timeout                   900;
   lingering_time                  30;
   lingering_timeout                5;
   fastcgi_connect_timeout        10s;
-  fastcgi_send_timeout          180s;
-  fastcgi_read_timeout          600s;
+  fastcgi_send_timeout          900s;
+  fastcgi_read_timeout          900s;
 
  ## Open File Performance
   open_file_cache max=8000 inactive=30s;
