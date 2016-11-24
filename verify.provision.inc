@@ -14,6 +14,9 @@ function provision_symbiotic_provision_apache_vhost_config($uri, $data = null) {
     . "  Deny from all\n"
     . "</Location>\n";
 
+  // Git repos can be cloned through https
+  $htaccess .= 'RedirectMatch 404 ^/\.git.*$' . "\n\n";
+
   return $htaccess;
 }
 
@@ -30,6 +33,9 @@ function provision_symbiotic_provision_nginx_vhost_config($uri, $data = null) {
     . "    alias /var/aegir/config/letsencrypt.d/well-known/acme-challenge;\n"
     . "    try_files \$uri 404;\n"
     . "  }\n\n";
+
+  // Git repos can be cloned through https
+  $htaccess .= 'location ~ /\.git { return 403; }' . "\n\n";
 
   return $htaccess;
 }
