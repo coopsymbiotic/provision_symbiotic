@@ -35,7 +35,7 @@ function provision_symbiotic_provision_nginx_vhost_config($uri, $data = null) {
     . "  }\n\n";
 
   // Git repos can be cloned through https
-  $htaccess .= 'location ~ /\.git { return 403; }' . "\n\n";
+  $htaccess .= 'location ~ /\.git { return 404; }' . "\n\n";
 
   return $htaccess;
 }
