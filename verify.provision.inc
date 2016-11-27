@@ -8,7 +8,7 @@
 function provision_symbiotic_provision_apache_vhost_config($uri, $data = null) {
   // Block access to the htaccess-custom file
   // It's a form of configuration file that is not meant to be public.
-  $htaccess  = 
+  $htaccess  =
       "<Location \"/xmlrpc.php\">\n"
     . "  Order deny,allow\n"
     . "  Deny from all\n"
@@ -48,6 +48,11 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
     // Only run on CiviCRM sites.
     // For example, the "hostmaster" site does not run CiviCRM.
     if (! function_exists('civicrm_initialize')) {
+      return;
+    }
+
+    // Ignore CiviCRM 4.6 and previous.
+    if (! method_exists('Civi', 'settings')) {
       return;
     }
 
@@ -94,8 +99,6 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
     // Request the site configuration
     $result = drupal_http_request(d()->hosting_restapi_hostmaster . '/sites/config?url=' . d()->uri . '&token=' . d()->hosting_restapi_token);
     $config = json_decode($result->data);
-
-    civicrm_initialize();
 
     variable_set('site_name', $config['organization']['name']);
     variable_set('site_mail', $config['organization']['email']);
