@@ -77,6 +77,10 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
       $extensions_suffix = 'modules/civi-extensions';
     }
 
+    if (file_exists("$root/sites/$host/civiext/")) {
+      $extensions_suffix = 'civiext';
+    }
+
     Civi::settings()->set('extensionsDir', "$root/sites/$host/$extensions_suffix/");
     Civi::settings()->set('extensionsURL', "https://$host/sites/$host/$extensions_suffix");
 
