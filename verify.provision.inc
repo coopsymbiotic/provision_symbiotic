@@ -26,16 +26,6 @@ function provision_symbiotic_provision_apache_vhost_config($uri, $data = null) {
  * Inject Nginx configuration in the site vhost.
  */
 function provision_symbiotic_provision_nginx_vhost_config($uri, $data = null) {
-  // This is redundant with hosting_https, but we are not using it
-  // everywhere yet.
-  if (!module_exists('hosting_https')) {
-    $htaccess =
-        "  location ^~ /.well-known/acme-challenge {\n"
-      . "    alias /var/aegir/config/letsencrypt.d/well-known/acme-challenge;\n"
-      . "    try_files \$uri 404;\n"
-      . "  }\n\n";
-  }
-
   // Git repos can be cloned through https
   $htaccess .= 'location ~ /\.git { return 404; }' . "\n\n";
 
