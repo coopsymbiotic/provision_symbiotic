@@ -14,6 +14,10 @@ function provision_symbiotic_provision_apache_vhost_config($uri, $data = null) {
     . "  Deny from all\n"
     . "</Location>\n";
 
+  // Workaround for Moisaico bug
+  // https://github.com/veda-consulting/uk.co.vedaconsulting.mosaico/issues/160
+  $htaccess .= 'RewriteRule "^/templates/(.*)$" /vendor/civicrm/uk.co.vedaconsulting.mosaico/packages/mosaico/templates/$1 [R=301,L]' . "\n\n";
+
   // Git repos can be cloned through https
   $htaccess .= 'RedirectMatch 404 ^/\.git.*$' . "\n\n";
 
@@ -28,6 +32,10 @@ function provision_symbiotic_provision_apache_vhost_config($uri, $data = null) {
 function provision_symbiotic_provision_nginx_vhost_config($uri, $data = null) {
   // Git repos can be cloned through https
   $htaccess .= 'location ~ /\.git { return 404; }' . "\n\n";
+
+  // Workaround for Moisaico bug
+  // https://github.com/veda-consulting/uk.co.vedaconsulting.mosaico/issues/160
+  $htaccess .= 'rewrite ^/templates/(.*)$ /vendor/civicrm/uk.co.vedaconsulting.mosaico/packages/mosaico/templates/$1 permanent;' . "\n\n";
 
   return $htaccess;
 }
