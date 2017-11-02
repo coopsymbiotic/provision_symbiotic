@@ -8,6 +8,9 @@ function provision_symbiotic_drush_command() {
     'description' => 'Generates a one-time link for user 2.',
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
   );
+  $items['provision-symbiotic-hush-alerts'] = array(
+    'description' => 'Hide CiviCRM Status Alerts.',
+  );
 
   return $items;
 }
@@ -131,4 +134,23 @@ function provision_symbiotic_provision_services() {
   return array(
     'symbiotic' => NULL,
   );
+}
+
+/**
+ * Callback for provision-symbiotic-hush-alerts
+ *
+ * Hush CiviCRM alerts.
+ */
+function drush_provision_symbiotic_hush_alerts() {
+  civicrm_initialize();
+
+  $hush = ['checkDirVariables', 'checkUrlVariables', 'checkPhpVersion', 'checkVersion', 'checkDirsWritable', 'checkIndices', 'checkPriceFields'];
+
+  foreach ($hush as $h) {
+    civicrm_api3('StatusPreference', 'create', [
+      'name' => $h,
+      'ignore_severity' => 'critical',
+      'hush_until' => '',
+    ]);
+  }
 }
