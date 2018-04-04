@@ -47,7 +47,13 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
   if (d()->type == 'site') {
     // Only run on CiviCRM sites.
     // For example, the "hostmaster" site does not run CiviCRM.
-    if (! function_exists('civicrm_initialize')) {
+    if (drush_drupal_major_version() == 8 && Drupal::hasService('civicrm')) {
+      \Drupal::service('civicrm')->initialize();
+    }
+    elseif (function_exists('civicrm_initialize')) {
+      civicrm_initialize();
+    }
+    else {
       return;
     }
 
@@ -56,13 +62,17 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
       return;
     }
 
-    civicrm_initialize();
-
     // Make sure that CiviCRM path/url settings are correct.
     $root = d()->root;
     $host = d()->uri;
 
-    Civi::settings()->set('userFrameworkResourceURL', "https://$host/sites/all/modules/civicrm");
+    if (drush_drupal_major_version() == 8) {
+      Civi::settings()->set('userFrameworkResourceURL', "https://$host/vendor/civicrm/civicrm-core");
+    }
+    else {
+      Civi::settings()->set('userFrameworkResourceURL', "https://$host/sites/all/modules/civicrm");
+    }
+
     Civi::settings()->set('uploadDir', "$root/sites/$host/files/civicrm/upload/");
     Civi::settings()->set('customFileUploadDir', "$root/sites/$host/files/civicrm/custom/");
 
@@ -87,6 +97,11 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
 
     // The "verify" task can run regularly. Check to make sure we only run once,
     // after the initial clone.
+    if (drush_drupal_major_version() == 8) {
+      // Drupal8 is not supported for now. We don't really use this anyway.
+      return;
+    }
+
     if (variable_get('hosting_restapi_initial_done', NULL)) {
       return;
     }
