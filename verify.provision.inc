@@ -37,6 +37,18 @@ function provision_symbiotic_provision_nginx_vhost_config($uri, $data = null) {
   // https://github.com/veda-consulting/uk.co.vedaconsulting.mosaico/issues/160
   $htaccess .= 'rewrite ^/templates/(.*)$ /vendor/civicrm/uk.co.vedaconsulting.mosaico/packages/mosaico/templates/$1 permanent;' . "\n\n";
 
+  // D8 extern support
+  if (drush_drupal_major_version() == 8) {
+    $htaccess .= 'location ~* ^/vendor/civicrm/civicrm-core/extern/.*\.php {
+      tcp_nopush off;
+      keepalive_requests 0;
+      try_files $uri =404;
+      fastcgi_param CIVICRM_SETTINGS \'' . d()->root . '/sites/' . d()->uri . '/civicrm.settings.php\';
+      fastcgi_pass unix:/var/run/php/php7.0-fpm.sock;
+      return 404;
+    }' . "\n\n";
+  }
+
   return $htaccess;
 }
 
