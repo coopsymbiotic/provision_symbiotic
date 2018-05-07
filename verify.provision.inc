@@ -82,7 +82,14 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
       Civi::settings()->set('userFrameworkResourceURL', "https://$host/vendor/civicrm/civicrm-core");
     }
     else {
-      Civi::settings()->set('userFrameworkResourceURL', "https://$host/sites/all/modules/civicrm");
+      // CiviCRM might be in sites/all/modules or in the profile directory.
+      $module = _provision_civicrm_get_package_info();
+      $url = $module['filename'];
+      $url = substr($url, strlen(d()->root));
+      $url = substr($url, 0, - strlen('drupal/civicrm.module'));
+      $url = "https://$host$url";
+
+      Civi::settings()->set('userFrameworkResourceURL', $url);
     }
 
     Civi::settings()->set('uploadDir', "$root/sites/$host/files/civicrm/upload/");
