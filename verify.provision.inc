@@ -136,20 +136,23 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
     variable_set('hosting_restapi_hostmaster', d()->hosting_restapi_hostmaster);
 
     // Request the site configuration
-    $result = drupal_http_request(d()->hosting_restapi_hostmaster . '/sites/config?url=' . d()->uri . '&token=' . d()->hosting_restapi_token);
-    $config = json_decode($result->data);
+    $result = drupal_http_request(d()->hosting_restapi_hostmaster . '/hosting/api/site/config?url=' . d()->uri . '&token=' . d()->hosting_restapi_token);
+    $config = json_decode($result->data, TRUE);
 
-    variable_set('site_name', $config['organization']['name']);
-    variable_set('site_mail', $config['organization']['email']);
+    variable_set('site_name', $config['data']['organization']['name']);
+
+    # [ML] provision_spark sets no-reply-foo and this makes sense for symbiotic too,
+    # because we don't have an SMTP provider setup at this point.
+    # variable_set('site_mail', $config['data']['organization']['email']);
 
     try {
-      civicrm_api3('Contact', 'Create', array(
+      civicrm_api3('Contact', 'Create', [
         'id' => 1,
-        'organization_name' => $config['organization']['name'],
-        'display_name' => $config['organization']['name'],
-        'phone' => $config['organization']['phone'],
-        'email' => $config['organization']['email'],
-      ));
+        'organization_name' => $config['data']['organization']['name'], // FIXME: should be the name provided in custom field
+        'display_name' => $config['data']['organization']['name'],
+        // 'phone' => $config['organization']['phone'],
+        // 'email' => $config['data']['organization']['email'],
+      ]);
 
 /*
       civicrm_api3('Phone', 'Create', array(
