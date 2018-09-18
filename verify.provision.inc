@@ -42,11 +42,18 @@ function provision_symbiotic_provision_nginx_vhost_config($uri, $data = null) {
 
   // D8 extern support
   if (drush_drupal_major_version() == 8) {
+    // c.f. https://www.drupal.org/project/provision/issues/3000599
+    $phpfpm_socket_path = '/var/run/php/php7.0-fpm.sock';
+
+    if (file_exists('/var/run/php/php7.2-fpm.sock')) {
+      $phpfpm_socket_path = '/var/run/php/php7.2-fpm.sock';
+    }
+
     $htaccess .= 'location ~ ^/vendor/civicrm/civicrm-core/extern/.*\.php {
       tcp_nopush off;
       keepalive_requests 0;
       try_files $uri =404;
-      fastcgi_pass unix:/var/run/php/php7.0-fpm.sock;
+      fastcgi_pass unix:' . $phpfpm_socket_path . ';
     }' . "\n\n";
   }
 
