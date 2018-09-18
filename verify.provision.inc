@@ -42,12 +42,9 @@ function provision_symbiotic_provision_nginx_vhost_config($uri, $data = null) {
 
   // D8 extern support
   if (drush_drupal_major_version() == 8) {
-    // c.f. https://www.drupal.org/project/provision/issues/3000599
-    $phpfpm_socket_path = '/var/run/php/php7.0-fpm.sock';
-
-    if (file_exists('/var/run/php/php7.2-fpm.sock')) {
-      $phpfpm_socket_path = '/var/run/php/php7.2-fpm.sock';
-    }
+    // Depends on Aegir 7.x-3.152: https://www.drupal.org/project/provision/issues/2791095#comment-12717109
+    // See also: https://www.drupal.org/project/provision/issues/3000599
+    $phpfpm_socket_path = Provision_Service_http_nginx::getPhpFpmSocketPath();
 
     $htaccess .= 'location ~ ^/vendor/civicrm/civicrm-core/extern/.*\.php {
       tcp_nopush off;
