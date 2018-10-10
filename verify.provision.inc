@@ -119,6 +119,8 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
     Civi::settings()->set('imageUploadDir', "$root/sites/$host/files/civicrm/persist/contribute");
     Civi::settings()->set('imageUploadURL', "https://$host/sites/$host/files/civicrm/persist/contribute");
 
+    _provision_symbiotic_disable_iats_on_devsites();
+
     // The "verify" task can run regularly. Check to make sure we only run once,
     // after the initial clone.
     if (drush_drupal_major_version() == 8) {
@@ -174,5 +176,94 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
     }
 
     variable_set('hosting_restapi_initial_done', 1);
+  }
+}
+
+/**
+ * Automatically disables iATS logins on dev sites.
+ *
+ * NB: we disable by changing the login, since the iATS recurring Scheduled Job
+ * will still run even if the payment processor is disabled.
+ *
+ * Related issue: https://lab.symbiotic.coop/jvillage/jmanage/issues/1538
+ */
+function _provision_symbiotic_disable_iats_on_devsites() {
+  // Match against dev patterns:
+  // - crm-dev.* (SymbioTIC)
+  // - *.symbiodev.xyz (SymbioTIC)
+  // - *.crm-dev.* (Jvillage)
+  // - *.www-test.* (CiviCRM.org)
+  $is_dev = FALSE;
+
+  if (preg_match('/^crm-dev\./', d()->uri)) {
+    $is_dev = TRUE;
+  }
+  if (preg_match('/symbiodev.xyz/', d()->uri)) {
+    $is_dev = TRUE;
+  }
+  if (preg_match('/\.crm-dev\./', d()->uri)) {
+    $is_dev = TRUE;
+  }
+  if (preg_match('/\.www-test\./', d()->uri)) {
+    $is_dev = TRUE;
+  }
+
+  if (!$is_dev) {
+    return;
+  }
+
+  drush_log("Symbiotic: This is a dev site, checking if iATS needs to be disabled", 'ok');
+
+  civicrm_initialize();
+
+  $result = civicrm_api3('PaymentProcessor', 'get', [
+    'option.limit' => 0,
+  ]);
+
+  foreach ($result['values'] as $key => $val) {
+    // Don't rename the login if it's the test credentials
+    if ($val['user_name'] == 'TEST88') {
+      continue;
+    }
+
+    if (strpos($val['user_name'], 'DISABLEDBYAEGIR') !== FALSE) {
+      drush_log("Symbiotic: processor_id={$val['id']} credentials already renamed ({$val['user_name']})", 'ok');
+      continue;
+    }
+
+    if (preg_match('/iats/i', $val['class_name']) || preg_match('/eway/i', $val['class_name'])) {
+      $new_user_name = $val['user_name'] . 'DISABLEDBYAEGIR';
+
+      civicrm_api3('PaymentProcessor', 'create', [
+        'id' => $val['id'],
+        'user_name' => $new_user_name,
+      ]);
+
+      drush_log("Symbiotic: {$val['class_name']} processor_id={$val['id']} credentials have been disabled (renamed login to: {$new_user_name})", 'ok');
+    }
+  }
+
+  // Disable the Recurring Contribution iATS job
+  $job_names = [
+    'iATS Payments Recurring Contributions',
+    'iATS Payments Verification',
+  ];
+
+  foreach ($job_names as $job_name) {
+    $result = civicrm_api3('Job', 'get', [
+      'name' => $job_name,
+      'option.limit' => 0,
+    ]);
+
+    foreach ($result['values'] as $key => $val) {
+      if ($val['is_active']) {
+        civicrm_api3('Job', 'create', [
+          'id' => $key,
+          'is_active' => 0,
+        ]);
+
+        drush_log("Symbiotic: Disabled iATS Scheduled Job: {$val['name']}", 'ok');
+      }
+    }
   }
 }
