@@ -214,8 +214,6 @@ function _provision_symbiotic_disable_iats_on_devsites() {
 
   drush_log("Symbiotic: This is a dev site, checking if iATS needs to be disabled", 'ok');
 
-  civicrm_initialize();
-
   $result = civicrm_api3('PaymentProcessor', 'get', [
     'option.limit' => 0,
   ]);
