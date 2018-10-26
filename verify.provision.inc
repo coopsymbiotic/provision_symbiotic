@@ -62,15 +62,10 @@ function provision_symbiotic_provision_nginx_vhost_config($uri, $data = null) {
  */
 function drush_provision_symbiotic_post_provision_verify($url = NULL) {
   if (d()->type == 'site') {
+
     // Only run on CiviCRM sites.
     // For example, the "hostmaster" site does not run CiviCRM.
-    if (drush_drupal_major_version() == 8 && Drupal::hasService('civicrm')) {
-      \Drupal::service('civicrm')->initialize();
-    }
-    elseif (function_exists('civicrm_initialize')) {
-      civicrm_initialize();
-    }
-    else {
+    if (!provision_symbiotic_civicrm_init()) {
       return;
     }
 
