@@ -98,7 +98,11 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
     Civi::settings()->set('customPHPPathDir', NULL);
     Civi::settings()->set('customTemplateDir', NULL);
 
-    $extensions_suffix = 'modules/extensions';
+    $extensions_suffix = NULL;
+
+    if (file_exists("$root/sites/$host/files/civicrm/extensions/")) {
+      $extensions_suffix = 'files/civicrm/extensions';
+    }
 
     if (file_exists("$root/sites/$host/modules/civi-extensions/")) {
       $extensions_suffix = 'modules/civi-extensions';
@@ -106,6 +110,10 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
 
     if (file_exists("$root/sites/$host/civiext/")) {
       $extensions_suffix = 'civiext';
+    }
+
+    if (!$extensions_suffix) {
+      $extensions_suffix = 'modules/extensions';
     }
 
     Civi::settings()->set('extensionsDir', "$root/sites/$host/$extensions_suffix/");
