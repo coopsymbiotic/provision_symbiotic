@@ -37,6 +37,23 @@ function provision_symbiotic_provision_nginx_vhost_config($uri, $data = null) {
   // https://github.com/veda-consulting/uk.co.vedaconsulting.mosaico/issues/160
   $htaccess .= 'rewrite ^/templates/(.*)$ /vendor/civicrm/uk.co.vedaconsulting.mosaico/packages/mosaico/templates/$1 permanent;' . "\n\n";
 
+  // Required for REST API access (and must be outside the location block)
+  $htaccess .= 'fastcgi_param CIVICRM_SETTINGS \'' . d()->root . '/sites/' . d()->uri . '/civicrm.settings.php\';' . "\n\n";
+
+  // D8 extern support
+  if (drush_drupal_major_version() == 8) {
+    // Depends on Aegir 7.x-3.152: https://www.drupal.org/project/provision/issues/2791095#comment-12717109
+    // See also: https://www.drupal.org/project/provision/issues/3000599
+    $phpfpm_socket_path = Provision_Service_http_nginx::getPhpFpmSocketPath();
+
+    $htaccess .= 'location ~ ^/vendor/civicrm/civicrm-core/extern/.*\.php {
+      tcp_nopush off;
+      keepalive_requests 0;
+      try_files $uri =404;
+      fastcgi_pass unix:' . $phpfpm_socket_path . ';
+    }' . "\n\n";
+  }
+
   return $htaccess;
 }
 
@@ -45,9 +62,10 @@ function provision_symbiotic_provision_nginx_vhost_config($uri, $data = null) {
  */
 function drush_provision_symbiotic_post_provision_verify($url = NULL) {
   if (d()->type == 'site') {
+
     // Only run on CiviCRM sites.
     // For example, the "hostmaster" site does not run CiviCRM.
-    if (! function_exists('civicrm_initialize')) {
+    if (!provision_symbiotic_civicrm_init()) {
       return;
     }
 
@@ -56,20 +74,35 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
       return;
     }
 
-    civicrm_initialize();
-
     // Make sure that CiviCRM path/url settings are correct.
     $root = d()->root;
     $host = d()->uri;
 
-    Civi::settings()->set('userFrameworkResourceURL', "https://$host/sites/all/modules/civicrm");
+    if (drush_drupal_major_version() == 8) {
+      Civi::settings()->set('userFrameworkResourceURL', "https://$host/vendor/civicrm/civicrm-core");
+    }
+    else {
+      // CiviCRM might be in sites/all/modules or in the profile directory.
+      $module = _provision_civicrm_get_package_info();
+      $url = $module['filename'];
+      $url = substr($url, strlen(d()->root));
+      $url = substr($url, 0, - strlen('drupal/civicrm.module'));
+      $url = "https://$host$url";
+
+      Civi::settings()->set('userFrameworkResourceURL', $url);
+    }
+
     Civi::settings()->set('uploadDir', "$root/sites/$host/files/civicrm/upload/");
     Civi::settings()->set('customFileUploadDir', "$root/sites/$host/files/civicrm/custom/");
 
     Civi::settings()->set('customPHPPathDir', NULL);
     Civi::settings()->set('customTemplateDir', NULL);
 
-    $extensions_suffix = 'modules/extensions';
+    $extensions_suffix = NULL;
+
+    if (file_exists("$root/sites/$host/files/civicrm/extensions/")) {
+      $extensions_suffix = 'files/civicrm/extensions';
+    }
 
     if (file_exists("$root/sites/$host/modules/civi-extensions/")) {
       $extensions_suffix = 'modules/civi-extensions';
@@ -79,14 +112,25 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
       $extensions_suffix = 'civiext';
     }
 
+    if (!$extensions_suffix) {
+      $extensions_suffix = 'modules/extensions';
+    }
+
     Civi::settings()->set('extensionsDir', "$root/sites/$host/$extensions_suffix/");
     Civi::settings()->set('extensionsURL', "https://$host/sites/$host/$extensions_suffix");
 
     Civi::settings()->set('imageUploadDir', "$root/sites/$host/files/civicrm/persist/contribute");
     Civi::settings()->set('imageUploadURL', "https://$host/sites/$host/files/civicrm/persist/contribute");
 
+    _provision_symbiotic_disable_iats_on_devsites();
+
     // The "verify" task can run regularly. Check to make sure we only run once,
     // after the initial clone.
+    if (drush_drupal_major_version() == 8) {
+      // Drupal8 is not supported for now. We don't really use this anyway.
+      return;
+    }
+
     if (variable_get('hosting_restapi_initial_done', NULL)) {
       return;
     }
@@ -101,20 +145,23 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
     variable_set('hosting_restapi_hostmaster', d()->hosting_restapi_hostmaster);
 
     // Request the site configuration
-    $result = drupal_http_request(d()->hosting_restapi_hostmaster . '/sites/config?url=' . d()->uri . '&token=' . d()->hosting_restapi_token);
-    $config = json_decode($result->data);
+    $result = drupal_http_request(d()->hosting_restapi_hostmaster . '/hosting/api/site/config?url=' . d()->uri . '&token=' . d()->hosting_restapi_token);
+    $config = json_decode($result->data, TRUE);
 
-    variable_set('site_name', $config['organization']['name']);
-    variable_set('site_mail', $config['organization']['email']);
+    variable_set('site_name', $config['data']['organization']['name']);
+
+    # [ML] provision_spark sets no-reply-foo and this makes sense for symbiotic too,
+    # because we don't have an SMTP provider setup at this point.
+    # variable_set('site_mail', $config['data']['organization']['email']);
 
     try {
-      civicrm_api3('Contact', 'Create', array(
+      civicrm_api3('Contact', 'Create', [
         'id' => 1,
-        'organization_name' => $config['organization']['name'],
-        'display_name' => $config['organization']['name'],
-        'phone' => $config['organization']['phone'],
-        'email' => $config['organization']['email'],
-      ));
+        'organization_name' => $config['data']['organization']['name'], // FIXME: should be the name provided in custom field
+        'display_name' => $config['data']['organization']['name'],
+        // 'phone' => $config['organization']['phone'],
+        // 'email' => $config['data']['organization']['email'],
+      ]);
 
 /*
       civicrm_api3('Phone', 'Create', array(
@@ -132,5 +179,92 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
     }
 
     variable_set('hosting_restapi_initial_done', 1);
+  }
+}
+
+/**
+ * Automatically disables iATS logins on dev sites.
+ *
+ * NB: we disable by changing the login, since the iATS recurring Scheduled Job
+ * will still run even if the payment processor is disabled.
+ *
+ * Related issue: https://lab.symbiotic.coop/jvillage/jmanage/issues/1538
+ */
+function _provision_symbiotic_disable_iats_on_devsites() {
+  // Match against dev patterns:
+  // - crm-dev.* (SymbioTIC)
+  // - *.symbiodev.xyz (SymbioTIC)
+  // - *.crm-dev.* (Jvillage)
+  // - *.www-test.* (CiviCRM.org)
+  $is_dev = FALSE;
+
+  if (preg_match('/^crm-dev\./', d()->uri)) {
+    $is_dev = TRUE;
+  }
+  if (preg_match('/symbiodev.xyz/', d()->uri)) {
+    $is_dev = TRUE;
+  }
+  if (preg_match('/\.crm-dev\./', d()->uri)) {
+    $is_dev = TRUE;
+  }
+  if (preg_match('/\.www-test\./', d()->uri)) {
+    $is_dev = TRUE;
+  }
+
+  if (!$is_dev) {
+    return;
+  }
+
+  drush_log("Symbiotic: This is a dev site, checking if iATS needs to be disabled", 'ok');
+
+  $result = civicrm_api3('PaymentProcessor', 'get', [
+    'option.limit' => 0,
+  ]);
+
+  foreach ($result['values'] as $key => $val) {
+    // Don't rename the login if it's the test credentials
+    if ($val['user_name'] == 'TEST88') {
+      continue;
+    }
+
+    if (strpos($val['user_name'], 'DISABLEDBYAEGIR') !== FALSE) {
+      drush_log("Symbiotic: processor_id={$val['id']} credentials already renamed ({$val['user_name']})", 'ok');
+      continue;
+    }
+
+    if (preg_match('/iats/i', $val['class_name']) || preg_match('/eway/i', $val['class_name'])) {
+      $new_user_name = $val['user_name'] . 'DISABLEDBYAEGIR';
+
+      civicrm_api3('PaymentProcessor', 'create', [
+        'id' => $val['id'],
+        'user_name' => $new_user_name,
+      ]);
+
+      drush_log("Symbiotic: {$val['class_name']} processor_id={$val['id']} credentials have been disabled (renamed login to: {$new_user_name})", 'ok');
+    }
+  }
+
+  // Disable the Recurring Contribution iATS job
+  $job_names = [
+    'iATS Payments Recurring Contributions',
+    'iATS Payments Verification',
+  ];
+
+  foreach ($job_names as $job_name) {
+    $result = civicrm_api3('Job', 'get', [
+      'name' => $job_name,
+      'option.limit' => 0,
+    ]);
+
+    foreach ($result['values'] as $key => $val) {
+      if ($val['is_active']) {
+        civicrm_api3('Job', 'create', [
+          'id' => $key,
+          'is_active' => 0,
+        ]);
+
+        drush_log("Symbiotic: Disabled iATS Scheduled Job: {$val['name']}", 'ok');
+      }
+    }
   }
 }

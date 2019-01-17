@@ -189,6 +189,31 @@ if ($nginx_has_upload_progress) {
 ###  nginx default maps
 #######################################################
 
+##
+## Custom SymbioTIC variables that can be overriden in nginx-custom.conf
+## c.f. facil/civicrm#21191
+##
+
+map $https $symbiotic_hsts {
+  on 'max-age=15768000';
+  default '';
+}
+
+map $https $symbiotic_xss_protection {
+  default '';
+}
+
+map $https $symbiotic_security_policy {
+  default '';
+}
+
+# https://lab.symbiotic.coop/coopsymbiotic/ops/wikis/Aegir/RedirectionLangue
+map $http_accept_language $lang {
+  default en;
+  ~^en en;
+  ~fr fr; # l'absence du ^ est intentionelle
+}
+
 ###
 ### Support separate Speed Booster caches for various mobile devices.
 ###

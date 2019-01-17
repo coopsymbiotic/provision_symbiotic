@@ -11,6 +11,13 @@ function provision_symbiotic_drush_command() {
   $items['provision-symbiotic-hush-alerts'] = array(
     'description' => 'Hide CiviCRM Status Alerts.',
   );
+  $items['provision-symbiotic-role-permission'] = array(
+    'description' => 'Add a permission to a role.',
+    'arguments' => [
+      'rid' => 'Role ID',
+      'permission' => 'Permission',
+    ],
+  );
 
   return $items;
 }
@@ -95,6 +102,10 @@ function provision_symbiotic_provision_config_load_templates($config) {
     $file = dirname(__FILE__) . '/tpl/custom-nginx-server_ssl.tpl.php';
     return $file;
   }
+  elseif (is_a($config, 'Provision_Config_Http_Inc_Server')) {
+    $file = dirname(__FILE__) . '/tpl/custom-nginx-vhost_include.tpl.php';
+    return $file;
+  }
 }
 
 /**
@@ -137,12 +148,32 @@ function provision_symbiotic_provision_services() {
 }
 
 /**
+ * Wrapper to initialize CiviCRM, depending on the CMS.
+ *
+ * Returns FALSE if this is not a CiviCRM site (ex: hostmaster).
+ */
+function provision_symbiotic_civicrm_init() {
+  if (drush_drupal_major_version() == 8 && Drupal::hasService('civicrm')) {
+    \Drupal::service('civicrm')->initialize();
+    return TRUE;
+  }
+  elseif (function_exists('civicrm_initialize')) {
+    civicrm_initialize();
+    return TRUE;
+  }
+
+  return FALSE;
+}
+
+/**
  * Callback for provision-symbiotic-hush-alerts
  *
  * Hush CiviCRM alerts.
  */
 function drush_provision_symbiotic_hush_alerts() {
-  civicrm_initialize();
+  if (!provision_symbiotic_civicrm_init()) {
+    return;
+  }
 
   $hush = ['checkDirVariables', 'checkUrlVariables', 'checkPhpVersion', 'checkVersion', 'checkDirsWritable', 'checkIndices', 'checkPriceFields'];
 
@@ -153,4 +184,19 @@ function drush_provision_symbiotic_hush_alerts() {
       'hush_until' => '',
     ]);
   }
+}
+
+/**
+ * Callback for provision-symbiotic-role-permission
+ *
+ * Add a permission to a role.
+ */
+function drush_provision_symbiotic_role_permission($rid, $permission) {
+  if (!provision_symbiotic_civicrm_init()) {
+    return;
+  }
+
+  // Configurateur
+  $permissions = [$permission];
+  user_role_grant_permissions($rid, $permissions);
 }
