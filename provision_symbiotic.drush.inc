@@ -18,6 +18,9 @@ function provision_symbiotic_drush_command() {
       'permission' => 'Permission',
     ],
   );
+  $items['provision-symbiotic-civicrm-stats'] = array(
+    'description' => 'Returns the total number of CiviCRM contacts, activities, contributions, memberships, mailings, cases, events and participants',
+  );
 
   return $items;
 }
@@ -199,4 +202,26 @@ function drush_provision_symbiotic_role_permission($rid, $permission) {
   // Configurateur
   $permissions = [$permission];
   user_role_grant_permissions($rid, $permissions);
+}
+
+/**
+ * Callback for provision-symbiotic-civicrm-stats
+ *
+ * Returns the total number of CiviCRM contacts, activities, contributions,
+ * memberships, mailings, cases, events and event participants.
+ */
+function drush_provision_symbiotic_civicrm_stats() {
+  if (!provision_symbiotic_civicrm_init()) {
+    echo "0,0,0,0,0,0";
+    return;
+  }
+
+  echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_contact WHERE is_deleted = 0') . ',';
+  echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_activity WHERE is_test = 0, is_deleted = 0, is_current_revision = 1') . ',';
+  echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_contribution WHERE is_test = 0') . ',';
+  echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_membership WHERE is_test = 0') . ',';
+  echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_mailing') . ',';
+  echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_case WHERE is_deleted = 0') . ',';
+  echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_event') . ',';
+  echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_participant WHERE is_test = 0');
 }
