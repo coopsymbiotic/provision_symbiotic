@@ -1233,14 +1233,8 @@ location @nobots {
   ###
   ### For Drupal >= 7
   ###
-  if ($sent_http_x_generator) {
-    add_header X-Info-Gen "Modern";
-    rewrite ^ /index.php?$query_string last;
-  }
-  ###
-  ### For Drupal <= 6
-  ###
-  rewrite ^/(.*)$ /index.php?q=$1 last;
+  add_header X-Info-Gen "Modern";
+  rewrite ^ /index.php?$query_string last;
 }
 
 ###
