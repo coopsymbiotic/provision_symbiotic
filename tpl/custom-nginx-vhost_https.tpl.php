@@ -61,7 +61,16 @@ server {
   ssl_session_cache shared:SSL:10m;
   ssl_session_timeout 10m;
   keepalive_timeout          70;
-  return 301 $scheme://<?php print $this->redirection; ?>$request_uri;
+
+<?php
+  // Extra config is allowed here because it lets us support exotic requirements
+  // with provision_customhtaccess.
+  print $extra_config;
+?>
+
+  location = / {
+    return 301 $scheme://<?php print $this->redirection; ?>$request_uri;
+  }
 }
 <?php endforeach; ?>
 <?php endif; ?>
