@@ -68,7 +68,7 @@ server {
   print $extra_config;
 ?>
 
-  location = / {
+  location / {
     return 301 $scheme://<?php print $this->redirection; ?>$request_uri;
   }
 }
