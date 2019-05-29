@@ -52,6 +52,13 @@ function provision_symbiotic_provision_nginx_vhost_config($uri, $data = null) {
       try_files $uri =404;
       fastcgi_pass unix:' . $phpfpm_socket_path . ';
     }' . "\n\n";
+
+    $htaccess .= 'location ~ ^/vendor/civicrm/civicrm-core/packages/kcfinder/.*\.php {
+      tcp_nopush off;
+      keepalive_requests 0;
+      try_files $uri =404;
+      fastcgi_pass unix:' . $phpfpm_socket_path . ';
+    }' . "\n\n";
   }
 
   return $htaccess;
