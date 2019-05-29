@@ -186,12 +186,12 @@ function drush_provision_symbiotic_hush_alerts() {
     return;
   }
 
-  $hush = ['checkDirVariables', 'checkUrlVariables', 'checkPhpVersion', 'checkVersion', 'checkDirsWritable', 'checkIndices', 'checkPriceFields'];
+  $hush = ['checkDirVariables', 'checkUrlVariables', 'checkPhpVersion', 'checkVersion', 'checkDirsWritable', 'checkIndices', 'checkPriceFields', 'extensionUpdates'];
 
   foreach ($hush as $h) {
     civicrm_api3('StatusPreference', 'create', [
       'name' => $h,
-      'ignore_severity' => 'critical',
+      'ignore_severity' => 'warning',
       'hush_until' => '',
     ]);
   }
