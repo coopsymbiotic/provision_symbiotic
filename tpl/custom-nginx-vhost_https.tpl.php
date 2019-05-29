@@ -1,5 +1,5 @@
 
-<?php if ($this->https_enabled && $this->https_key) : ?>
+<?php if ($this->https_key && $this->https_cert_ok) : ?>
 
 <?php
 $satellite_mode = drush_get_option('satellite_mode');
@@ -40,12 +40,8 @@ server {
 ?>
 
   ssl                        on;
-  ssl_certificate_key        <?php print $https_cert_key; ?>;
-<?php if (!empty($https_chain_cert)) : ?>
-  ssl_certificate            <?php print $https_chain_cert; ?>;
-<?php else: ?>
-  ssl_certificate            <?php print $https_cert; ?>;
-<?php endif; ?>
+  ssl_certificate_key        /var/aegir/config/letsencrypt.d/<?php print $this->uri; ?>/privkey.pem;
+  ssl_certificate            /var/aegir/config/letsencrypt.d/<?php print $this->uri; ?>/fullchain.pem;
   ssl_protocols              TLSv1.1 TLSv1.2;
   ssl_ciphers                ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES256-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA:ECDHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA:DES-CBC3-SHA:!aNULL:!eNULL:!LOW:!DES:!MD5:!EXP:!PSK:!SRP:!DSS;
   ssl_ecdh_curve             secp384r1;
@@ -134,13 +130,8 @@ server {
   root          <?php print "{$this->root}"; ?>;
 
   ssl                        on;
-  ssl_certificate_key        <?php print $https_cert_key; ?>;
-<?php if (!empty($https_chain_cert)) : ?>
-  ssl_certificate            <?php print $https_chain_cert; ?>;
-<?php else: ?>
-  ssl_certificate            <?php print $https_cert; ?>;
-<?php endif; ?>
-
+  ssl_certificate_key        /var/aegir/config/letsencrypt.d/<?php print $this->uri; ?>/privkey.pem;
+  ssl_certificate            /var/aegir/config/letsencrypt.d/<?php print $this->uri; ?>/fullchain.pem;
   ssl_protocols              TLSv1.1 TLSv1.2;
   ssl_ciphers                ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:DHE-RSA-AES256-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES256-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES128-SHA:DHE-RSA-AES128-SHA:!aNULL:!eNULL:!LOW:!3DES:!DES:!MD5:!EXP:!PSK:!SRP:!DSS;
   ssl_ecdh_curve             secp384r1;
