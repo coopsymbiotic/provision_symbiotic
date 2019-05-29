@@ -18,6 +18,14 @@ function provision_symbiotic_drush_command() {
       'permission' => 'Permission',
     ],
   );
+  $items['provision-symbiotic-translate-options'] = array(
+    'description' => 'Translate Option Groups and Option Values in the default locale',
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
+    'arguments' => [
+      'language' => 'Language, ex: fr_CA',
+      'gid' => 'Option Group ID',
+    ],
+  );
   $items['provision-symbiotic-civicrm-stats'] = array(
     'description' => 'Returns the total number of CiviCRM contacts, activities, contributions, memberships, mailings, cases, events and participants',
   );
@@ -224,4 +232,38 @@ function drush_provision_symbiotic_civicrm_stats() {
   echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_case WHERE is_deleted = 0') . ',';
   echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_event') . ',';
   echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_participant WHERE is_test = 0');
+}
+
+/**
+ * Implements the provision-symbiotic-translate-options command.
+ */
+function drush_provision_symbiotic_translate_options($language, $option_group_id = NULL) {
+  drush_bootstrap(DRUSH_BOOTSTRAP_DRUPAL_FULL);
+
+  $entities = ['OptionValue', 'OptionGroup'];
+
+  $params = [
+    'sequential' => 1,
+    'option.limit' => 0,
+    'option.language' => $language,
+  ];
+
+  if ($option_group_id) {
+    $params['option_group_id'] = $option_group_id;
+  }
+
+  foreach ($entities as $entity) {
+    $results = civicrm_api3($entity, 'get', $params);
+
+    foreach ($results['values'] as $option) {
+      $ts_label = ts($option['label']);
+
+      if ($option['label'] != $ts_label) {
+        civicrm_api3('OptionValue', 'create', array(
+          'id' => $option['id'],
+          'label' => $ts_label,
+        ));
+      }
+    }
+  }
 }
