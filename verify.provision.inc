@@ -40,6 +40,21 @@ function provision_symbiotic_provision_nginx_vhost_config($uri, $data = null) {
   // Required for REST API access (and must be outside the location block)
   $htaccess .= 'fastcgi_param CIVICRM_SETTINGS \'' . d()->root . '/sites/' . d()->uri . '/civicrm.settings.php\';' . "\n\n";
 
+  // Allow our monitoring to fetch the php-fpm status page
+  if (d()->name == '@hm' || d()->name == '@hostmaster') {
+    $phpfpm_socket_path = Provision_Service_http_nginx::getPhpFpmSocketPath();
+
+    $htaccess .= 'location ~ ^/fpm-(status|ping)$ {
+      tcp_nopush off;
+      access_log off;
+      keepalive_requests 0;
+      allow 127.0.0.1;
+      allow ::1;
+      deny all;
+      fastcgi_pass unix:' . $phpfpm_socket_path . ';
+    }' . "\n\n";
+  }
+
   // D8 extern support
   if (drush_drupal_major_version() == 8) {
     // Depends on Aegir 7.x-3.152: https://www.drupal.org/project/provision/issues/2791095#comment-12717109
