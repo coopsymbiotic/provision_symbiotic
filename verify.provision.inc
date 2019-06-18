@@ -44,15 +44,31 @@ function provision_symbiotic_provision_nginx_vhost_config($uri, $data = null) {
   if (d()->name == '@hm' || d()->name == '@hostmaster') {
     $phpfpm_socket_path = Provision_Service_http_nginx::getPhpFpmSocketPath();
 
-    $htaccess .= 'location ~ ^/fpm-(status|ping)$ {
-      tcp_nopush off;
-      access_log off;
-      keepalive_requests 0;
-      allow 127.0.0.1;
-      allow ::1;
-      deny all;
-      fastcgi_pass unix:' . $phpfpm_socket_path . ';
-    }' . "\n\n";
+    // Wee hack to allow requests from our public IPs, since the
+    // wget runs against the official/public hostname.
+    $allow = ['127.0.0.1', '::1'];
+    $hosts = file_get_contents('/etc/hosts');
+
+    $lines = explode("\n", $hosts);
+
+    foreach ($lines as $line) {
+      if (preg_match('/^([^ ]+)\s+' . d()->uri . '/', $line, $matches)) {
+        $allow[] = $matches[1];
+      }
+    }
+
+    $htaccess .= "  location ~ ^/fpm-(status|ping)\$ {\n";
+    $htaccess .= "    tcp_nopush off;\n";
+    $htaccess .= "    access_log off;\n";
+    $htaccess .= "    keepalive_requests 0;\n";
+
+    foreach ($allow as $a) {
+      $htaccess .= "    allow $a;\n";
+    }
+
+    $htaccess .= "    deny all;\n";
+    $htaccess .= "    fastcgi_pass unix:$phpfpm_socket_path;\n";
+    $htaccess .= "  }\n\n";
   }
 
   // D8 extern support
