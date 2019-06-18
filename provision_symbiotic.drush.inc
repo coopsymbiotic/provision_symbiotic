@@ -11,6 +11,24 @@ function provision_symbiotic_drush_command() {
   $items['provision-symbiotic-hush-alerts'] = array(
     'description' => 'Hide CiviCRM Status Alerts.',
   );
+  $items['provision-symbiotic-role-permission'] = array(
+    'description' => 'Add a permission to a role.',
+    'arguments' => [
+      'rid' => 'Role ID',
+      'permission' => 'Permission',
+    ],
+  );
+  $items['provision-symbiotic-translate-options'] = array(
+    'description' => 'Translate Option Groups and Option Values in the default locale',
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
+    'arguments' => [
+      'language' => 'Language, ex: fr_CA',
+      'gid' => 'Option Group ID',
+    ],
+  );
+  $items['provision-symbiotic-civicrm-stats'] = array(
+    'description' => 'Returns the total number of CiviCRM contacts, activities, contributions, memberships, mailings, cases, events and participants',
+  );
 
   return $items;
 }
@@ -141,20 +159,111 @@ function provision_symbiotic_provision_services() {
 }
 
 /**
+ * Wrapper to initialize CiviCRM, depending on the CMS.
+ *
+ * Returns FALSE if this is not a CiviCRM site (ex: hostmaster).
+ */
+function provision_symbiotic_civicrm_init() {
+  if (drush_drupal_major_version() == 8 && Drupal::hasService('civicrm')) {
+    \Drupal::service('civicrm')->initialize();
+    return TRUE;
+  }
+  elseif (function_exists('civicrm_initialize')) {
+    civicrm_initialize();
+    return TRUE;
+  }
+
+  return FALSE;
+}
+
+/**
  * Callback for provision-symbiotic-hush-alerts
  *
  * Hush CiviCRM alerts.
  */
 function drush_provision_symbiotic_hush_alerts() {
-  civicrm_initialize();
+  if (!provision_symbiotic_civicrm_init()) {
+    return;
+  }
 
-  $hush = ['checkDirVariables', 'checkUrlVariables', 'checkPhpVersion', 'checkVersion', 'checkDirsWritable', 'checkIndices', 'checkPriceFields'];
+  $hush = ['checkDirVariables', 'checkUrlVariables', 'checkPhpVersion', 'checkVersion', 'checkDirsWritable', 'checkIndices', 'checkPriceFields', 'extensionUpdates'];
 
   foreach ($hush as $h) {
     civicrm_api3('StatusPreference', 'create', [
       'name' => $h,
-      'ignore_severity' => 'critical',
+      'ignore_severity' => 'warning',
       'hush_until' => '',
     ]);
+  }
+}
+
+/**
+ * Callback for provision-symbiotic-role-permission
+ *
+ * Add a permission to a role.
+ */
+function drush_provision_symbiotic_role_permission($rid, $permission) {
+  if (!provision_symbiotic_civicrm_init()) {
+    return;
+  }
+
+  // Configurateur
+  $permissions = [$permission];
+  user_role_grant_permissions($rid, $permissions);
+}
+
+/**
+ * Callback for provision-symbiotic-civicrm-stats
+ *
+ * Returns the total number of CiviCRM contacts, activities, contributions,
+ * memberships, mailings, cases, events and event participants.
+ */
+function drush_provision_symbiotic_civicrm_stats() {
+  if (!provision_symbiotic_civicrm_init()) {
+    echo "0,0,0,0,0,0";
+    return;
+  }
+
+  echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_contact WHERE is_deleted = 0') . ',';
+  echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_activity WHERE is_test = 0 AND is_deleted = 0 AND is_current_revision = 1') . ',';
+  echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_contribution WHERE is_test = 0') . ',';
+  echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_membership WHERE is_test = 0') . ',';
+  echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_mailing') . ',';
+  echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_case WHERE is_deleted = 0') . ',';
+  echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_event') . ',';
+  echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_participant WHERE is_test = 0');
+}
+
+/**
+ * Implements the provision-symbiotic-translate-options command.
+ */
+function drush_provision_symbiotic_translate_options($language, $option_group_id = NULL) {
+  drush_bootstrap(DRUSH_BOOTSTRAP_DRUPAL_FULL);
+
+  $entities = ['OptionValue', 'OptionGroup'];
+
+  $params = [
+    'sequential' => 1,
+    'option.limit' => 0,
+    'option.language' => $language,
+  ];
+
+  if ($option_group_id) {
+    $params['option_group_id'] = $option_group_id;
+  }
+
+  foreach ($entities as $entity) {
+    $results = civicrm_api3($entity, 'get', $params);
+
+    foreach ($results['values'] as $option) {
+      $ts_label = ts($option['label']);
+
+      if ($option['label'] != $ts_label) {
+        civicrm_api3('OptionValue', 'create', array(
+          'id' => $option['id'],
+          'label' => $ts_label,
+        ));
+      }
+    }
   }
 }

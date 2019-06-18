@@ -207,6 +207,13 @@ map $https $symbiotic_security_policy {
   default '';
 }
 
+# https://lab.symbiotic.coop/coopsymbiotic/ops/wikis/Aegir/RedirectionLangue
+map $http_accept_language $lang {
+  default en;
+  ~^en en;
+  ~fr fr; # l'absence du ^ est intentionelle
+}
+
 ###
 ### Support separate Speed Booster caches for various mobile devices.
 ###

@@ -17,7 +17,12 @@ if ($this->redirection) {
       print "  server_name  {$alias_url};\n";
     }
     print "  access_log   off;\n";
-    print "  rewrite ^ \$scheme://{$this->redirection}\$request_uri? permanent;\n";
+
+    # Note: using this location block, instead of a plain rewrite, makes it
+    # possible to override some behaviours in plain http.
+    print " location / {\n";
+    print "    rewrite ^ \$scheme://{$this->redirection}\$request_uri? permanent;\n";
+    print " }\n";
     print "}\n";
   }
 }
@@ -84,11 +89,17 @@ server {
 if ($this->redirection || $ssl_redirection) {
   if ($ssl_redirection && !$this->redirection) {
     // redirect aliases in non-ssl to the same alias on ssl.
-    print "\n  return 301 https://\$host\$request_uri;\n";
+    print "\n";
+    print "  location / {\n";
+    print "    return 301 https://\$host\$request_uri;\n";
+    print "  }\n";
   }
   elseif ($ssl_redirection && $this->redirection) {
     // redirect all aliases + main uri to the main https uri.
-    print "\n  return 301 https://{$this->redirection}\$request_uri;\n";
+    print "\n";
+    print "  location / {\n";
+    print "    return 301 https://{$this->redirection}\$request_uri;\n";
+    print "  }\n";
   }
   elseif (!$ssl_redirection && $this->redirection) {
     print "  include       " . $server->include_path . "/nginx_vhost_common.conf;\n";
