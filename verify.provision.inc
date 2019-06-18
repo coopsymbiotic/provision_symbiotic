@@ -52,7 +52,7 @@ function provision_symbiotic_provision_nginx_vhost_config($uri, $data = null) {
     $lines = explode("\n", $hosts);
 
     foreach ($lines as $line) {
-      if (preg_match('/^([^ ]+)\s+' . d()->uri . '/', $line, $matches)) {
+      if (preg_match('/^([^\s]+)\s+' . d()->uri . '/', $line, $matches)) {
         $allow[] = $matches[1];
       }
     }
