@@ -1346,9 +1346,10 @@ location = /index.php {
 <?php endif; ?>
   ###
   ### Use Nginx cache for all visitors.
+  ### [ML] Added DrupalCookie to the mix, to make sure we do not cache drupal admin forms.
   ###
   set $nocache "";
-  if ( $nocache_details ~ (?:AegirCookie|Args|Skip) ) {
+  if ( $nocache_details ~ (?:AegirCookie|DrupalCookie|Args|Skip) ) {
     set $nocache "NoCache";
   }
   fastcgi_cache speed;
