@@ -69,6 +69,22 @@ function provision_symbiotic_provision_nginx_vhost_config($uri, $data = null) {
     $htaccess .= "    deny all;\n";
     $htaccess .= "    fastcgi_pass unix:$phpfpm_socket_path;\n";
     $htaccess .= "  }\n\n";
+
+    // IP whitelisting, if enabled
+    $whitelist = variable_get('provision_symbiotic_whitelist');
+
+    if ($whitelist) {
+      $whitelist = explode(',', $whitelist);
+
+      $htaccess .= "  # IP whitelisting by provision_symbiotic\n";
+
+      foreach ($whitelist as $ip) {
+        $ip = trim($ip);
+        $htaccess .= "  allow $ip;\n";
+      }
+
+      $htaccess .= "  deny all;\n";
+    }
   }
 
   // D8 extern support
