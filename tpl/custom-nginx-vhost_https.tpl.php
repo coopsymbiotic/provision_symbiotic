@@ -69,7 +69,7 @@ server {
   ssl_prefer_server_ciphers  on;
 
   # Generated using:
-  # openssl dhparam -check -5 4096 -out /etc/nginx/params.4096
+  # openssl dhparam -check -5 4096 > /etc/nginx/params.4096
   # (can be re-generated regularly in a cron job)
   <?php if (file_exists('/etc/nginx/params.4096')) { ?>
   ssl_dhparam /etc/nginx/params.4096;
@@ -159,7 +159,7 @@ server {
   ssl_prefer_server_ciphers  on;
 
   # Generated using:
-  # openssl dhparam -check -5 4096 -out /etc/nginx/params.4096
+  # openssl dhparam -check -5 4096 > /etc/nginx/params.4096
   # (can be re-generated regularly in a cron job)
   <?php if (file_exists('/etc/nginx/params.4096')) { ?>
   ssl_dhparam /etc/nginx/params.4096;
