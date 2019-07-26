@@ -18,6 +18,27 @@ if ($nginx_has_http2) {
 else {
   $ssl_args = "ssl";
 }
+
+// Support for wildcard certs
+$https_key_name = $this->uri;
+$domain_parts = explode('.', $this->uri);
+
+// Remove the first part, ex: foo.bar.example.org becomes bar.example.org
+// because by definition, a wildcard covers *.example.org,
+// but could also be *.service.example.org.
+array_shift($domain_parts);
+
+while (!empty($domain_parts)) {
+  $wildcard_name_test = '_wildcard.' . implode('.', $domain_parts);
+
+  drush_log(dt("Provision Symbiotic: Testing if :cert exists", [':cert' => $wildcard_name_test]), 'ok');
+
+  if (file_exists("/var/aegir/config/letsencrypt.d/$wildcard_name_test/privkey.pem")) {
+    drush_log(dt("Provision Symbiotic: Found :cert exists", [':cert' => $wildcard_name_test]), 'ok');
+    $https_key_name = $wildcard_name_test;
+    break;
+  }
+}
 ?>
 
 <?php if ($this->redirection): ?>
@@ -40,8 +61,8 @@ server {
 ?>
 
   ssl                        on;
-  ssl_certificate_key        /var/aegir/config/letsencrypt.d/<?php print $this->uri; ?>/privkey.pem;
-  ssl_certificate            /var/aegir/config/letsencrypt.d/<?php print $this->uri; ?>/fullchain.pem;
+  ssl_certificate_key        /var/aegir/config/letsencrypt.d/<?php print $https_key_name; ?>/privkey.pem;
+  ssl_certificate            /var/aegir/config/letsencrypt.d/<?php print $https_key_name; ?>/fullchain.pem;
   ssl_protocols              TLSv1.1 TLSv1.2;
   ssl_ciphers                ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES256-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA:ECDHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA:DES-CBC3-SHA:!aNULL:!eNULL:!LOW:!DES:!MD5:!EXP:!PSK:!SRP:!DSS;
   ssl_ecdh_curve             secp384r1;
@@ -130,8 +151,8 @@ server {
   root          <?php print "{$this->root}"; ?>;
 
   ssl                        on;
-  ssl_certificate_key        /var/aegir/config/letsencrypt.d/<?php print $this->uri; ?>/privkey.pem;
-  ssl_certificate            /var/aegir/config/letsencrypt.d/<?php print $this->uri; ?>/fullchain.pem;
+  ssl_certificate_key        /var/aegir/config/letsencrypt.d/<?php print $https_key_name; ?>/privkey.pem;
+  ssl_certificate            /var/aegir/config/letsencrypt.d/<?php print $https_key_name; ?>/fullchain.pem;
   ssl_protocols              TLSv1.1 TLSv1.2;
   ssl_ciphers                ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:DHE-RSA-AES256-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES256-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES128-SHA:DHE-RSA-AES128-SHA:!aNULL:!eNULL:!LOW:!3DES:!DES:!MD5:!EXP:!PSK:!SRP:!DSS;
   ssl_ecdh_curve             secp384r1;
