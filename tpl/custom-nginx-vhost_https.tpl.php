@@ -38,6 +38,8 @@ while (!empty($domain_parts)) {
     $https_key_name = $wildcard_name_test;
     break;
   }
+
+  array_shift($domain_parts);
 }
 ?>
 
