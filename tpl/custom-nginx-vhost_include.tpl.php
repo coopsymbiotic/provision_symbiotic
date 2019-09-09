@@ -73,10 +73,32 @@ if ($main_site_name = '') {
   set $main_site_name "$server_name";
 }
 
+###
+### Mitigation for https://www.drupal.org/SA-CORE-2018-002
+###
+set $rce "ZZ";
+if ( $query_string ~* (23value|23default_value|element_parents=%23) ) {
+  set $rce "A";
+}
+if ( $request_method = POST ) {
+  set $rce "${rce}B";
+}
+if ( $rce = "AB" ) {
+  return 403;
+}
+
 <?php if ($nginx_config_mode == 'extended'): ?>
 set $nocache_details "Cache";
 
 <?php if ($satellite_mode == 'boa'): ?>
+###
+### Return 404 on special PHP URLs to avoid revealing version used,
+### even indirectly. See also: https://drupal.org/node/2116387
+###
+if ( $args ~* "=PHP[A-Z0-9]{8}-" ) {
+  return 404;
+}
+
 ###
 ### Deny crawlers.
 ###
@@ -182,7 +204,7 @@ location ^~ /cdn/farfuture/ {
   gzip_http_version 1.0;
   if_modified_since exact;
   set $nocache_details "Skip";
-  location ~* ^/cdn/farfuture/.+\.(?:css|js|jpe?g|gif|png|ico|bmp|svg|swf|pdf|docx?|xlsx?|pptx?|tiff?|txt|rtf|class|otf|ttf|woff|eot|less)$ {
+  location ~* ^/cdn/farfuture/.+\.(?:css|js|jpe?g|gif|png|ico|bmp|svg|swf|pdf|docx?|xlsx?|pptx?|tiff?|txt|rtf|class|otf|ttf|woff2?|eot|less)$ {
     expires max;
     add_header X-Header "CDN Far Future Generator 1.0";
     add_header Cache-Control "no-transform, public";
@@ -552,6 +574,9 @@ location ~* /sites/.*/files/styles/(.*)$ {
   access_log off;
   log_not_found off;
   expires    30d;
+  add_header Access-Control-Allow-Origin *;
+  add_header X-Content-Type-Options nosniff;
+  add_header X-XSS-Protection "1; mode=block";
 <?php if ($nginx_config_mode == 'extended'): ?>
   set $nocache_details "Skip";
 <?php endif; ?>
@@ -565,6 +590,9 @@ location ~* /s3/files/styles/(.*)$ {
   access_log off;
   log_not_found off;
   expires    30d;
+  add_header Access-Control-Allow-Origin *;
+  add_header X-Content-Type-Options nosniff;
+  add_header X-XSS-Protection "1; mode=block";
 <?php if ($nginx_config_mode == 'extended'): ?>
   set $nocache_details "Skip";
 <?php endif; ?>
@@ -578,6 +606,9 @@ location ~* /sites/.*/files/imagecache/(.*)$ {
   access_log off;
   log_not_found off;
   expires    30d;
+  add_header Access-Control-Allow-Origin *;
+  add_header X-Content-Type-Options nosniff;
+  add_header X-XSS-Protection "1; mode=block";
 <?php if ($nginx_config_mode == 'extended'): ?>
   # fix common problems with old paths after import from standalone to Aegir multisite
   rewrite ^/sites/(.*)/files/imagecache/(.*)/sites/default/files/(.*)$ /sites/$main_site_name/files/imagecache/$2/$3 last;
@@ -672,7 +703,10 @@ location ~* /files/private/ {
 location ~* wysiwyg_fields/(?:plugins|scripts)/.*\.(?:js|css) {
   access_log off;
   log_not_found off;
-  try_files $uri @nobots;
+  add_header Access-Control-Allow-Origin *;
+  add_header X-Content-Type-Options nosniff;
+  add_header X-XSS-Protection "1; mode=block";
+  try_files $uri @drupal;
 }
 
 ###
@@ -710,7 +744,17 @@ location ~* \.css$ {
   access_log  off;
   tcp_nodelay off;
   expires     max; #if using aggregator
+  add_header Access-Control-Allow-Origin *;
+  add_header X-Content-Type-Options nosniff;
+  add_header X-XSS-Protection "1; mode=block";
   try_files   /cache/perm/$host${uri}_.css $uri =404;
+}
+
+###
+### Support for dynamic /sw.js requests. See #2982073 on drupal.org
+###
+location = /sw.js {
+  try_files $uri @drupal;
 }
 
 ###
@@ -731,6 +775,13 @@ location ~* \.(?:js|htc)$ {
 }
 
 ###
+### Support for dynamic .json requests.
+###
+location ~* \.json$ {
+  try_files $uri @drupal;
+}
+
+###
 ### Support for static .json files with fast 404 +Boost compatibility.
 ###
 location ~* ^/sites/.*/files/.*\.json$ {
@@ -741,14 +792,10 @@ location ~* ^/sites/.*/files/.*\.json$ {
   access_log  off;
   tcp_nodelay off;
   expires     max; ### if using aggregator
+  add_header Access-Control-Allow-Origin *;
+  add_header X-Content-Type-Options nosniff;
+  add_header X-XSS-Protection "1; mode=block";
   try_files   /cache/normal/$host${uri}_.json $uri =404;
-}
-
-###
-### Support for dynamic .json requests.
-###
-location ~* \.json$ {
-  try_files $uri @cache;
 }
 
 ###
@@ -820,6 +867,9 @@ location ^~ /downloads/ {
     tcp_nodelay   off;
     access_log    off;
     log_not_found off;
+    add_header Access-Control-Allow-Origin *;
+    add_header X-Content-Type-Options nosniff;
+    add_header X-XSS-Protection "1; mode=block";
     rewrite  ^/downloads/(.*)$  /sites/$main_site_name/files/downloads/$1 last;
     try_files   $uri =404;
   }
@@ -839,6 +889,9 @@ location ~* ^.+\.(?:jpe?g|gif|png|ico|bmp|svg|swf|docx?|xlsx?|pptx?|tiff?|txt|rt
   tcp_nodelay   off;
   access_log    off;
   log_not_found off;
+  add_header Access-Control-Allow-Origin *;
+  add_header X-Content-Type-Options nosniff;
+  add_header X-XSS-Protection "1; mode=block";
   rewrite     ^/images/(.*)$  /sites/$main_site_name/files/images/$1 last;
   rewrite     ^/.+/sites/.+/files/(.*)$  /sites/$main_site_name/files/$1 last;
   try_files   $uri =404;
@@ -854,6 +907,9 @@ location ~* ^.+\.(?:avi|mpe?g|mov|wmv|ogg|ogv|zip|tar|t?gz|rar|dmg|exe|apk|pxl|i
   tcp_nopush  off;
   access_log    off;
   log_not_found off;
+  add_header Access-Control-Allow-Origin *;
+  add_header X-Content-Type-Options nosniff;
+  add_header X-XSS-Protection "1; mode=block";
   rewrite     ^/.+/sites/.+/files/(.*)$  /sites/$main_site_name/files/$1 last;
   try_files   $uri =404;
 }
@@ -869,6 +925,9 @@ location ~* ^/sites/.+/files/.+\.(?:pdf|aspx?)$ {
   tcp_nodelay   off;
   access_log    off;
   log_not_found off;
+  add_header Access-Control-Allow-Origin *;
+  add_header X-Content-Type-Options nosniff;
+  add_header X-XSS-Protection "1; mode=block";
   try_files   $uri =404;
 }
 
@@ -883,6 +942,9 @@ location ~* ^.+\.flv$ {
   expires 30d;
   access_log    off;
   log_not_found off;
+  add_header Access-Control-Allow-Origin *;
+  add_header X-Content-Type-Options nosniff;
+  add_header X-XSS-Protection "1; mode=block";
   try_files $uri =404;
 }
 
@@ -898,6 +960,9 @@ location ~* ^.+\.(?:mp4|m4a)$ {
   expires 30d;
   access_log    off;
   log_not_found off;
+  add_header Access-Control-Allow-Origin *;
+  add_header X-Content-Type-Options nosniff;
+  add_header X-XSS-Protection "1; mode=block";
   try_files $uri =404;
 }
 <?php endif; ?>
@@ -909,6 +974,9 @@ location ~* /(?:cross-?domain)\.xml$ {
   access_log  off;
   tcp_nodelay off;
   expires     30d;
+  add_header Access-Control-Allow-Origin *;
+  add_header X-Content-Type-Options nosniff;
+  add_header X-XSS-Protection "1; mode=block";
   try_files   $uri =404;
 }
 
@@ -963,6 +1031,9 @@ location ~* ^/sites/.*/(?:modules|libraries)/(?:contrib/)?(?:tinybrowser|f?ckedi
   access_log      off;
   tcp_nodelay     off;
   expires         30d;
+  add_header Access-Control-Allow-Origin *;
+  add_header X-Content-Type-Options nosniff;
+  add_header X-XSS-Protection "1; mode=block";
   try_files $uri =404;
 }
 
@@ -973,6 +1044,9 @@ location ~* ^/sites/.*/files/ {
   access_log      off;
   tcp_nodelay     off;
   expires         30d;
+  add_header Access-Control-Allow-Origin *;
+  add_header X-Content-Type-Options nosniff;
+  add_header X-XSS-Protection "1; mode=block";
   try_files $uri =404;
 }
 
@@ -1100,11 +1174,11 @@ location ~ ^/(?<esi>esi/.*)"$ {
   fastcgi_cache_methods GET HEAD;
   fastcgi_cache_min_uses 1;
   fastcgi_cache_key "$scheme$is_bot$device$host$request_method$key_uri$cache_uid$http_x_forwarded_proto$sent_http_x_local_proto$cookie_respimg";
-  fastcgi_cache_valid 200 5s;
-  fastcgi_cache_valid 301 1m;
-  fastcgi_cache_valid 302 403 404 1s;
+  fastcgi_cache_valid 200 3s;
+  fastcgi_cache_valid 301 302 403 404 1s;
+  fastcgi_cache_valid any 1s;
   fastcgi_cache_lock on;
-  fastcgi_ignore_headers Cache-Control Expires;
+  fastcgi_ignore_headers Cache-Control Expires Vary;
   fastcgi_pass_header Set-Cookie;
   fastcgi_pass_header X-Accel-Expires;
   fastcgi_pass_header X-Accel-Redirect;
@@ -1123,13 +1197,6 @@ if ( $args ~* "/autocomplete/" ) {
   return 405;
 }
 error_page 405 = @drupal;
-
-###
-### Rewrite legacy requests with /index.php to extension-free URL.
-###
-if ( $args ~* "^q=(?<query_value>.*)" ) {
-  rewrite ^/index.php$ $scheme://$host/?q=$query_value? permanent;
-}
 <?php endif; ?>
 <?php endif; ?>
 
@@ -1279,9 +1346,10 @@ location = /index.php {
 <?php endif; ?>
   ###
   ### Use Nginx cache for all visitors.
+  ### [ML] Added DrupalCookie to the mix, to make sure we do not cache drupal admin forms.
   ###
   set $nocache "";
-  if ( $nocache_details ~ (?:AegirCookie|Args|Skip) ) {
+  if ( $nocache_details ~ (?:AegirCookie|DrupalCookie|Args|Skip) ) {
     set $nocache "NoCache";
   }
   fastcgi_cache speed;

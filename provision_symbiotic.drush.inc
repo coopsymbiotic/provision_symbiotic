@@ -29,6 +29,9 @@ function provision_symbiotic_drush_command() {
   $items['provision-symbiotic-civicrm-stats'] = array(
     'description' => 'Returns the total number of CiviCRM contacts, activities, contributions, memberships, mailings, cases, events and participants',
   );
+  $items['provision-symbiotic-last-login'] = array(
+    'description' => 'Returns the last login time from a user (excluding uid=1).',
+  );
 
   return $items;
 }
@@ -265,5 +268,16 @@ function drush_provision_symbiotic_translate_options($language, $option_group_id
         ));
       }
     }
+  }
+}
+
+/**
+ * Implements the provision-symbiotic-last-login command.
+ */
+function drush_provision_symbiotic_last_login() {
+  $result = db_query('SELECT name, from_unixtime(access) as t from users order by access desc limit 1');
+
+  foreach ($result as $record) {
+    drush_log($record->name . ' ' . $record->t, 'ok');
   }
 }
