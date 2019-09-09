@@ -142,6 +142,10 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
       $extensions_suffix = 'files/civicrm/extensions';
     }
 
+    if (file_exists("$root/sites/$host/files/civicrm/ext/")) {
+      $extensions_suffix = 'files/civicrm/ext';
+    }
+
     if (file_exists("$root/sites/$host/modules/civi-extensions/")) {
       $extensions_suffix = 'modules/civi-extensions';
     }
