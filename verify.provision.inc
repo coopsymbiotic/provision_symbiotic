@@ -69,6 +69,22 @@ function provision_symbiotic_provision_nginx_vhost_config($uri, $data = null) {
     $htaccess .= "    deny all;\n";
     $htaccess .= "    fastcgi_pass unix:$phpfpm_socket_path;\n";
     $htaccess .= "  }\n\n";
+
+    // IP whitelisting, if enabled
+    $whitelist = variable_get('provision_symbiotic_whitelist');
+
+    if ($whitelist) {
+      $whitelist = explode(',', $whitelist);
+
+      $htaccess .= "  # IP whitelisting by provision_symbiotic\n";
+
+      foreach ($whitelist as $ip) {
+        $ip = trim($ip);
+        $htaccess .= "  allow $ip;\n";
+      }
+
+      $htaccess .= "  deny all;\n";
+    }
   }
 
   // D8 extern support
@@ -142,6 +158,10 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
       $extensions_suffix = 'files/civicrm/extensions';
     }
 
+    if (file_exists("$root/sites/$host/files/civicrm/ext/")) {
+      $extensions_suffix = 'files/civicrm/ext';
+    }
+
     if (file_exists("$root/sites/$host/modules/civi-extensions/")) {
       $extensions_suffix = 'modules/civi-extensions';
     }
@@ -160,7 +180,7 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
     Civi::settings()->set('imageUploadDir', "$root/sites/$host/files/civicrm/persist/contribute");
     Civi::settings()->set('imageUploadURL', "https://$host/sites/$host/files/civicrm/persist/contribute");
 
-    _provision_symbiotic_disable_iats_on_devsites();
+    _provision_symbiotic_disable_jobs_on_devsites();
 
     // The "verify" task can run regularly. Check to make sure we only run once,
     // after the initial clone.
@@ -221,14 +241,14 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
 }
 
 /**
- * Automatically disables iATS logins on dev sites.
+ * Automatically sets Environment=Development and disables iATS logins on dev sites.
  *
  * NB: we disable by changing the login, since the iATS recurring Scheduled Job
- * will still run even if the payment processor is disabled.
- *
- * Related issue: https://lab.symbiotic.coop/jvillage/jmanage/issues/1538
+ * will still run even if the payment processor is disabled. Since recent 5.x CiviCRM
+ * releases, jobs are not run when Environment=Development, but we are still doing
+ * this just in case someone accidentally changes the environment back to 'production'.
  */
-function _provision_symbiotic_disable_iats_on_devsites() {
+function _provision_symbiotic_disable_jobs_on_devsites() {
   // Match against dev patterns:
   // - crm-dev.* (SymbioTIC)
   // - *.symbiodev.xyz (SymbioTIC)
@@ -253,7 +273,9 @@ function _provision_symbiotic_disable_iats_on_devsites() {
     return;
   }
 
-  drush_log("Symbiotic: This is a dev site, checking if iATS needs to be disabled", 'ok');
+  drush_log("Symbiotic: This is a dev site, setting environment=Development and checking if iATS needs to be disabled", 'ok');
+
+  Civi::settings()->set('environment', 'Development');
 
   $result = civicrm_api3('PaymentProcessor', 'get', [
     'option.limit' => 0,
