@@ -922,7 +922,8 @@ location ~* /(?:modules|libraries)/(?:contrib/)?(?:ad|tinybrowser|f?ckeditor|tin
 <?php endif; ?>
   tcp_nopush   off;
   keepalive_requests 0;
-  access_log   off;
+  # [ML] SYMBIOTIC - Always log requests to the REST endpoint
+  # access_log   off;
   if ($is_bot) {
     return 403;
   }
