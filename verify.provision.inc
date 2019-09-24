@@ -154,22 +154,27 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
 
     $extensions_suffix = NULL;
 
-    if (file_exists("$root/sites/$host/files/civicrm/extensions/")) {
+    if (file_exists("$root/sites/$host/modules/extensions/")) {
+      // Symbiotic default
+      $extensions_suffix = 'modules/extensions';
+    }
+    elseif (file_exists("$root/sites/$host/modules/civi-extensions/")) {
+      // Legacy Symbiotic
+      $extensions_suffix = 'modules/civi-extensions';
+    }
+    elseif (file_exists("$root/sites/$host/civiext/")) {
+      // civicrm.org
+      $extensions_suffix = 'civiext';
+    }
+    elseif (file_exists("$root/sites/$host/files/civicrm/extensions/")) {
       $extensions_suffix = 'files/civicrm/extensions';
     }
-
-    if (file_exists("$root/sites/$host/files/civicrm/ext/")) {
+    elseif (file_exists("$root/sites/$host/files/civicrm/ext/")) {
+      // CiviCRM default
       $extensions_suffix = 'files/civicrm/ext';
     }
 
-    if (file_exists("$root/sites/$host/modules/civi-extensions/")) {
-      $extensions_suffix = 'modules/civi-extensions';
-    }
-
-    if (file_exists("$root/sites/$host/civiext/")) {
-      $extensions_suffix = 'civiext';
-    }
-
+    // Symbiotic default
     if (!$extensions_suffix) {
       $extensions_suffix = 'modules/extensions';
     }
