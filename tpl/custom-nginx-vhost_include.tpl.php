@@ -1,6 +1,7 @@
 <?php
 
 ## SymbioTIC override from provision_symbiotic
+## Original file: provision/http/Provision/Config/Nginx/Inc/vhost_include.tpl.php
 
 $script_user = drush_get_option('script_user');
 if (!$script_user && $server->script_user) {
@@ -137,7 +138,6 @@ if ($is_denied) {
 ###
 ### Add recommended HTTP headers
 ###
-add_header Access-Control-Allow-Origin *;
 add_header X-Content-Type-Options nosniff;
 add_header X-XSS-Protection "1; mode=block";
 <?php endif; ?>
@@ -174,7 +174,7 @@ location ^~ /httprl_async_function_callback {
   location ~* ^/httprl_async_function_callback {
     access_log off;
     set $nocache_details "Skip";
-    try_files  $uri @nobots;
+    try_files  $uri @drupal;
   }
 }
 
@@ -185,7 +185,7 @@ location ^~ /admin/httprl-test {
   location ~* ^/admin/httprl-test {
     access_log off;
     set $nocache_details "Skip";
-    try_files  $uri @nobots;
+    try_files  $uri @drupal;
   }
 }
 
@@ -213,7 +213,7 @@ location ^~ /cdn/farfuture/ {
     add_header X-Content-Type-Options nosniff;
     add_header X-XSS-Protection "1; mode=block";
     rewrite ^/cdn/farfuture/[^/]+/[^/]+/(.+)$ /$1 break;
-    try_files $uri @nobots;
+    try_files $uri @drupal;
   }
   location ~* ^/cdn/farfuture/ {
     expires epoch;
@@ -223,9 +223,9 @@ location ^~ /cdn/farfuture/ {
     add_header X-Content-Type-Options nosniff;
     add_header X-XSS-Protection "1; mode=block";
     rewrite ^/cdn/farfuture/[^/]+/[^/]+/(.+)$ /$1 break;
-    try_files $uri @nobots;
+    try_files $uri @drupal;
   }
-  try_files $uri @nobots;
+  try_files $uri @drupal;
 }
 <?php endif; ?>
 
@@ -236,6 +236,9 @@ location = /favicon.ico {
   access_log    off;
   log_not_found off;
   expires       30d;
+  add_header Access-Control-Allow-Origin *;
+  add_header X-Content-Type-Options nosniff;
+  add_header X-XSS-Protection "1; mode=block";
   try_files  /sites/$main_site_name/files/favicon.ico $uri =204;
 }
 
@@ -246,6 +249,9 @@ location = /favicon.ico {
 location = /robots.txt {
   access_log    off;
   log_not_found off;
+  add_header Access-Control-Allow-Origin *;
+  add_header X-Content-Type-Options nosniff;
+  add_header X-XSS-Protection "1; mode=block";
 <?php if ($nginx_config_mode == 'extended'): ?>
   try_files /sites/$main_site_name/files/$host.robots.txt /sites/$main_site_name/files/robots.txt $uri @cache;
 <?php else: ?>
@@ -330,10 +336,10 @@ location ^~ /cron/ {
 ###
 location ^~ /search {
   location ~* ^/search {
-    if ($is_bot) {
+    if ( $is_bot ) {
       return 403;
     }
-    try_files $uri @cache;
+    try_files $uri @drupal;
   }
 }
 
@@ -342,7 +348,7 @@ location ^~ /search {
 ###
 location ^~ /js/ {
   location ~* ^/js/ {
-    if ($is_bot) {
+    if ( $is_bot ) {
       return 403;
     }
     rewrite ^/(.*)$ /js.php?q=$1 last;
@@ -376,7 +382,7 @@ location ^~ /hosting/c/server_master {
   if ($cache_uid = '') {
     return 403;
   }
-  if ($is_bot) {
+  if ( $is_bot ) {
     return 403;
   }
   access_log off;
@@ -392,7 +398,7 @@ location ^~ /hosting/c/server_localhost {
   if ($cache_uid = '') {
     return 403;
   }
-  if ($is_bot) {
+  if ( $is_bot ) {
     return 403;
   }
   access_log off;
@@ -404,7 +410,7 @@ location ^~ /hosting/c/server_localhost {
 ### Fix for #2005116
 ###
 location ^~ /hosting/sites {
-  if ($is_bot) {
+  if ( $is_bot ) {
     return 403;
   }
   access_log off;
@@ -416,12 +422,12 @@ location ^~ /hosting/sites {
 ### Fix for Aegir & .info .pl domain extensions.
 ###
 location ^~ /hosting {
-  if ($is_bot) {
+  if ( $is_bot ) {
     return 403;
   }
   access_log off;
   set $nocache_details "Skip";
-  try_files $uri @cache;
+  try_files $uri @drupal;
 }
 
 <?php if ($satellite_mode == 'boa'): ?>
@@ -446,7 +452,7 @@ location ^~ /admin/config/development/performance/redis {
 ### Support for backup_migrate module download/restore/delete actions.
 ###
 location ^~ /admin {
-  if ($is_bot) {
+  if ( $is_bot ) {
     return 403;
   }
   access_log off;
@@ -458,6 +464,7 @@ location ^~ /admin {
 ### Avoid caching /civicrm* and protect it from bots.
 ###
 location ^~ /civicrm {
+  # SYMBIOTIC Allow bots and always log (ex: contribution/event pages)
   set $nocache_details "Skip";
   try_files $uri @drupal;
 }
@@ -466,6 +473,7 @@ location ^~ /civicrm {
 ### Avoid caching /civicrm* and protect it from bots on a multi-lingual site
 ###
 location ~* ^/\w\w/civicrm {
+  # SYMBIOTIC Allow bots and always log (ex: contribution/event pages)
   set $nocache_details "Skip";
   try_files $uri @drupal;
 }
@@ -475,7 +483,7 @@ location ~* ^/\w\w/civicrm {
 ###
 location ^~ /audio/download {
   location ~* ^/audio/download/.*/.*\.(?:mp3|mp4|m4a|ogg)$ {
-    if ($is_bot) {
+    if ( $is_bot ) {
       return 403;
     }
     tcp_nopush off;
@@ -532,11 +540,11 @@ location ~* (?:cgi-bin|vti-bin) {
 ### Deny bots on some weak modules uri.
 ###
 location ~* (?:validation|aggregator|vote_up_down|captcha|vbulletin|glossary/) {
-  if ($is_bot) {
+  if ( $is_bot ) {
     return 403;
   }
   access_log off;
-  try_files $uri @cache;
+  try_files $uri @drupal;
 }
 
 ###
@@ -660,7 +668,7 @@ include <?php print $aegir_root; ?>/config/server_master/nginx/post.d/nginx_vhos
 ### Note: this location doesn't work with X-Accel-Redirect.
 ###
 location ~* ^/sites/.*/files/private/ {
-  if ($is_bot) {
+  if ( $is_bot ) {
     return 403;
   }
   access_log off;
@@ -677,7 +685,7 @@ location ~* ^/sites/.*/files/private/ {
 location ~* ^/sites/.*/private/ {
   internal;
 <?php if ($nginx_config_mode == 'extended'): ?>
-  if ($is_bot) {
+  if ( $is_bot ) {
     return 403;
   }
 <?php endif; ?>
@@ -691,7 +699,7 @@ location ~* ^/sites/.*/private/ {
 ###
 location ~* /files/private/ {
   internal;
-  if ($is_bot) {
+  if ( $is_bot ) {
     return 403;
   }
   access_log off;
@@ -727,7 +735,7 @@ location ~* files/advagg_(?:css|js)/ {
   add_header X-Content-Type-Options nosniff;
   add_header X-XSS-Protection "1; mode=block";
   set $nocache_details "Skip";
-  try_files  $uri @nobots;
+  try_files  $uri @drupal;
 }
 
 ###
@@ -771,6 +779,9 @@ location ~* \.(?:js|htc)$ {
   access_log  off;
   tcp_nodelay off;
   expires     max; # if using aggregator
+  add_header Access-Control-Allow-Origin *;
+  add_header X-Content-Type-Options nosniff;
+  add_header X-XSS-Protection "1; mode=block";
   try_files   /cache/perm/$host${uri}_.js $uri =404;
 }
 
@@ -812,6 +823,48 @@ location @uncached {
 ###
 location ^~ /files/ {
 
+  add_header Access-Control-Allow-Origin *;
+  add_header X-Content-Type-Options nosniff;
+  add_header X-XSS-Protection "1; mode=block";
+
+<?php if ($satellite_mode == 'boa'): ?>
+  ###
+  ### Sub-location to support Flash Video (FLV) files with short URIs.
+  ###
+  location ~* /files/.+\.flv$ {
+    flv;
+    tcp_nodelay off;
+    tcp_nopush off;
+    expires 30d;
+    access_log    off;
+    log_not_found off;
+    add_header Access-Control-Allow-Origin *;
+    add_header X-Content-Type-Options nosniff;
+    add_header X-XSS-Protection "1; mode=block";
+    rewrite  ^/files/(.*)$  /sites/$main_site_name/files/$1 last;
+    try_files   $uri =404;
+  }
+
+  ###
+  ### Sub-location to support H.264/AAC files with short URIs.
+  ###
+  location ~* /files/.+\.(?:mp4|m4a)$ {
+    mp4;
+    mp4_buffer_size 1m;
+    mp4_max_buffer_size 5m;
+    tcp_nodelay off;
+    tcp_nopush off;
+    expires 30d;
+    access_log    off;
+    log_not_found off;
+    add_header Access-Control-Allow-Origin *;
+    add_header X-Content-Type-Options nosniff;
+    add_header X-XSS-Protection "1; mode=block";
+    rewrite  ^/files/(.*)$  /sites/$main_site_name/files/$1 last;
+    try_files   $uri =404;
+  }
+<?php endif; ?>
+
   ###
   ### Sub-location to support files/styles with short URIs.
   ###
@@ -843,7 +896,7 @@ location ^~ /files/ {
     try_files  /sites/$main_site_name/files/imagecache/$1 $uri @drupal;
   }
 
-  location ~* ^.+\.(?:pdf|jpe?g|gif|png|ico|bmp|svg|swf|docx?|xlsx?|pptx?|tiff?|txt|rtf|cgi|bat|pl|dll|class|otf|ttf|woff|eot|less|avi|mpe?g|mov|wmv|mp3|ogg|ogv|wav|midi|zip|tar|t?gz|rar|dmg|exe|apk|pxl|ipa|css|js)$ {
+  location ~* ^.+\.(?:pdf|jpe?g|gif|png|ico|bmp|svg|swf|docx?|xlsx?|pptx?|tiff?|txt|rtf|vcard|vcf|cgi|bat|pl|dll|class|otf|ttf|woff2?|eot|less|avi|mpe?g|mov|wmv|mp3|ogg|ogv|wav|midi|zip|tar|t?gz|rar|dmg|exe|apk|pxl|ipa|css|js)$ {
     expires       30d;
     tcp_nodelay   off;
     access_log    off;
@@ -862,7 +915,7 @@ location ^~ /files/ {
 ### Map /downloads/ shortcut early to avoid overrides in other locations.
 ###
 location ^~ /downloads/ {
-  location ~* ^.+\.(?:pdf|jpe?g|gif|png|ico|bmp|svg|swf|docx?|xlsx?|pptx?|tiff?|txt|rtf|cgi|bat|pl|dll|class|otf|ttf|woff|eot|less|avi|mpe?g|mov|wmv|mp3|ogg|ogv|wav|midi|zip|tar|t?gz|rar|dmg|exe|apk|pxl|ipa)$ {
+  location ~* ^.+\.(?:pdf|jpe?g|gif|png|ico|bmp|svg|swf|docx?|xlsx?|pptx?|tiff?|txt|rtf|vcard|vcf|cgi|bat|pl|dll|class|otf|ttf|woff2?|eot|less|avi|mpe?g|mov|wmv|mp3|ogg|ogv|wav|midi|zip|tar|t?gz|rar|dmg|exe|apk|pxl|ipa)$ {
     expires       30d;
     tcp_nodelay   off;
     access_log    off;
@@ -884,7 +937,7 @@ location ^~ /downloads/ {
 ### Serve & no-log static files & images directly,
 ### without all standard drupal rewrites, php-fpm etc.
 ###
-location ~* ^.+\.(?:jpe?g|gif|png|ico|bmp|svg|swf|docx?|xlsx?|pptx?|tiff?|txt|rtf|cgi|bat|pl|dll|class|otf|ttf|woff|eot|less|mp3|wav|midi)$ {
+location ~* ^.+\.(?:jpe?g|gif|png|ico|bmp|svg|swf|docx?|xlsx?|pptx?|tiff?|txt|rtf|vcard|vcf|cgi|bat|pl|dll|class|otf|ttf|woff2?|eot|less|mp3|wav|midi)$ {
   expires       30d;
   tcp_nodelay   off;
   access_log    off;
@@ -984,7 +1037,7 @@ location ~* /(?:cross-?domain)\.xml$ {
 ###
 ### Allow some known php files (like serve.php in the ad module).
 ###
-location ~* /(?:modules|libraries)/(?:contrib/)?(?:ad|tinybrowser|f?ckeditor|tinymce|wysiwyg_spellcheck|ecc|civicrm|fbconnect|radioactivity)/.*\.php$ {
+location ~* /(?:modules|libraries)/(?:contrib/)?(?:ad|tinybrowser|f?ckeditor|tinymce|wysiwyg_spellcheck|ecc|civicrm|fbconnect|radioactivity|statistics)/.*\.php$ {
 <?php if ($satellite_mode == 'boa'): ?>
   limit_conn   limreq 88;
 <?php endif; ?>
@@ -992,7 +1045,7 @@ location ~* /(?:modules|libraries)/(?:contrib/)?(?:ad|tinybrowser|f?ckeditor|tin
   keepalive_requests 0;
   # [ML] SYMBIOTIC - Always log requests to the REST endpoint
   # access_log   off;
-  if ($is_bot) {
+  if ( $is_bot ) {
     return 403;
   }
   try_files    $uri =404;
@@ -1009,14 +1062,14 @@ location ~* /(?:modules|libraries)/(?:contrib/)?(?:ad|tinybrowser|f?ckeditor|tin
 ### Deny crawlers and never cache known AJAX requests.
 ###
 location ~* /(?:ahah|ajax|batch|autocomplete|done|progress/|x-progress-id|js/.*) {
-  if ($is_bot) {
+  if ( $is_bot ) {
     return 403;
   }
   access_log off;
   log_not_found off;
 <?php if ($nginx_config_mode == 'extended'): ?>
   set $nocache_details "Skip";
-  try_files $uri @nobots;
+  try_files $uri @drupal;
 <?php else: ?>
   try_files $uri @drupal;
 <?php endif; ?>
@@ -1026,7 +1079,7 @@ location ~* /(?:ahah|ajax|batch|autocomplete|done|progress/|x-progress-id|js/.*)
 ### Serve & no-log static helper files used in some wysiwyg editors.
 ###
 location ~* ^/sites/.*/(?:modules|libraries)/(?:contrib/)?(?:tinybrowser|f?ckeditor|tinymce|flowplayer|jwplayer|videomanager)/.*\.(?:html?|xml)$ {
-  if ($is_bot) {
+  if ( $is_bot ) {
     return 403;
   }
   access_log      off;
@@ -1082,8 +1135,16 @@ location ~* \.xml$ {
 ###
 ### Deny bots on never cached uri.
 ###
-location ~* ^/(?:.*/)?(?:admin|user|cart|checkout|logout|comment/reply) {
-  if ($is_bot) {
+location ~* ^/(?:admin|user|cart|checkout|logout) {
+  if ( $is_bot ) {
+    return 403;
+  }
+  access_log off;
+  set $nocache_details "Skip";
+  try_files $uri @drupal;
+}
+location ~* ^/\w\w/(?:admin|user|cart|checkout|logout) {
+  if ( $is_bot ) {
     return 403;
   }
   access_log off;
@@ -1094,8 +1155,8 @@ location ~* ^/(?:.*/)?(?:admin|user|cart|checkout|logout|comment/reply) {
 ###
 ### Protect from DoS attempts on never cached uri.
 ###
-location ~* ^/(?:.*/)?(?:node/[0-9]+/edit|node/add) {
-  if ($is_bot) {
+location ~* ^/(?:.*/)?(?:node/[0-9]+/edit|node/add|comment/reply) {
+  if ( $is_bot ) {
     return 403;
   }
   access_log off;
@@ -1110,7 +1171,7 @@ location ~* ^/(?:.*/)?(?:node/[0-9]+/delete|approve) {
   if ($cache_uid = '') {
     return 403;
   }
-  if ($is_bot) {
+  if ( $is_bot ) {
     return 403;
   }
   access_log off;
@@ -1149,7 +1210,6 @@ location ~ ^/(?<esi>esi/.*)"$ {
   add_header X-This-Proto "$http_x_forwarded_proto";
   add_header X-Server-Name "$main_site_name";
   add_header Cache-Control "no-store, no-cache, must-revalidate, post-check=0, pre-check=0";
-  add_header Access-Control-Allow-Origin *;
   add_header X-Content-Type-Options nosniff;
   add_header X-XSS-Protection "1; mode=block";
   ###
@@ -1183,8 +1243,8 @@ location ~ ^/(?<esi>esi/.*)"$ {
   fastcgi_pass_header Set-Cookie;
   fastcgi_pass_header X-Accel-Expires;
   fastcgi_pass_header X-Accel-Redirect;
-  fastcgi_no_cache $cookie_NoCacheID $http_authorization $http_pragma $nocache;
-  fastcgi_cache_bypass $cookie_NoCacheID $http_authorization $http_pragma $nocache;
+  fastcgi_no_cache $cookie_NoCacheID $http_authorization $nocache;
+  fastcgi_cache_bypass $cookie_NoCacheID $http_authorization $nocache;
   fastcgi_cache_use_stale error http_500 http_503 invalid_header timeout updating;
   tcp_nopush off;
   keepalive_requests 0;
@@ -1258,53 +1318,61 @@ location @cache {
 ### Send all not cached requests to drupal with clean URLs support.
 ###
 location @drupal {
-<?php if ($nginx_config_mode == 'extended'): ?>
-  error_page 418 = @nobots;
-  if ($args) {
+  set $core_detected "Legacy";
+  set $location_detected "Nowhere";
+  ###
+  ### Detect
+  ###
+  if ( -e $document_root/web.config ) {
+    set $core_detected "Regular";
+  }
+  if ( -e $document_root/core ) {
+    set $core_detected "Modern";
+  }
+  error_page 402 = @legacy;
+  if ( $core_detected = Legacy ) {
+    return 402;
+  }
+  error_page 406 = @regular;
+  if ( $core_detected = Regular ) {
+    return 406;
+  }
+  error_page 418 = @modern;
+  if ( $core_detected = Modern ) {
     return 418;
   }
-<?php endif; ?>
   ###
-  ### For Drupal >= 7
+  ### Fallback
   ###
-  add_header X-Info-Gen "Modern";
+  set $location_detected "Fallback";
   rewrite ^ /index.php?$query_string last;
+}
+
+###
+### Special location for Drupal 6.
+###
+location @legacy {
+  set $location_detected "Legacy";
+  rewrite ^/(.*)$ /index.php?q=$1 last;
+}
+
+###
+### Special location for Drupal 7.
+###
+location @regular {
+  set $location_detected "Regular";
+  rewrite ^ /index.php?$query_string last;
+}
+
+###
+### Special location for Drupal 8.
+###
+location @modern {
+  set $location_detected "Modern";
+  try_files $uri /index.php?$query_string;
 }
 
 <?php if ($nginx_config_mode == 'extended'): ?>
-###
-### Special location for bots custom restrictions; can be overridden.
-###
-location @nobots {
-  ###
-  ### Support for Accelerated Mobile Pages (AMP) when bots are redirected below
-  ###
-  # if ( $query_string ~ "^amp$" ) {
-  #  rewrite ^/(.*)$  /index.php?q=$1 last;
-  # }
-
-  ###
-  ### Send all known bots to $args free URLs (optional)
-  ###
-  # if ($is_bot) {
-  #   return 301 $scheme://$host$request_uri;
-  # }
-
-  ###
-  ### Return 404 on special PHP URLs to avoid revealing version used,
-  ### even indirectly. See also: https://drupal.org/node/2116387
-  ###
-  if ( $args ~* "=PHP[A-Z0-9]{8}-" ) {
-    return 404;
-  }
-
-  ###
-  ### For Drupal >= 7
-  ###
-  add_header X-Info-Gen "Modern";
-  rewrite ^ /index.php?$query_string last;
-}
-
 ###
 ### Send all non-static requests to php-fpm, restricted to known php file.
 ###
@@ -1316,13 +1384,17 @@ location = /index.php {
   add_header X-GeoIP-Country-Name "$geoip_country_name";
 <?php endif; ?>
 <?php if ($nginx_config_mode == 'extended'): ?>
+  add_header X-Core-Variant "$core_detected";
+  add_header X-Loc-Where "$location_detected";
+  add_header X-Http-Pragma "$http_pragma";
+  add_header X-Arg-Nocache "$arg_nocache";
+  add_header X-Arg-Comment "$arg_comment";
   add_header X-Speed-Cache "$upstream_cache_status";
   add_header X-Speed-Cache-UID "$cache_uid";
   add_header X-Speed-Cache-Key "$key_uri";
   add_header X-NoCache "$nocache_details";
   add_header X-This-Proto "$http_x_forwarded_proto";
   add_header X-Server-Name "$main_site_name";
-  add_header Access-Control-Allow-Origin *;
   add_header X-Content-Type-Options nosniff;
   add_header X-XSS-Protection "1; mode=block";
 
@@ -1353,6 +1425,9 @@ location = /index.php {
   if ( $nocache_details ~ (?:AegirCookie|DrupalCookie|Args|Skip) ) {
     set $nocache "NoCache";
   }
+  add_header X-Debug-NoCache-Switch "$nocache";
+  add_header X-Debug-NoCache-Auth "$http_authorization";
+  add_header X-Debug-NoCache-Cookie "$cookie_NoCacheID";
   fastcgi_cache speed;
   fastcgi_cache_methods GET HEAD; ### Nginx default, but added for clarity
   fastcgi_cache_min_uses 1;
@@ -1361,12 +1436,12 @@ location = /index.php {
   fastcgi_cache_valid 301 1m;
   fastcgi_cache_valid 302 403 404 1s;
   fastcgi_cache_lock on;
-  fastcgi_ignore_headers Cache-Control Expires;
+  fastcgi_ignore_headers Cache-Control Expires Vary;
   fastcgi_pass_header Set-Cookie;
   fastcgi_pass_header X-Accel-Expires;
   fastcgi_pass_header X-Accel-Redirect;
-  fastcgi_no_cache $cookie_NoCacheID $http_authorization $http_pragma $nocache;
-  fastcgi_cache_bypass $cookie_NoCacheID $http_authorization $http_pragma $nocache;
+  fastcgi_no_cache $cookie_NoCacheID $http_authorization $nocache;
+  fastcgi_cache_bypass $cookie_NoCacheID $http_authorization $nocache;
   fastcgi_cache_use_stale error http_500 http_503 invalid_header timeout updating;
 }
 <?php endif; ?>
@@ -1381,7 +1456,7 @@ location ~* ^/(?:index|cron|boost_stats|update|authorize|xmlrpc)\.php$ {
 <?php endif; ?>
 <?php if ($satellite_mode == 'boa'): ?>
   limit_conn   limreq 88;
-  if ($is_bot) {
+  if ( $is_bot ) {
     return 404;
   }
 <?php endif; ?>
