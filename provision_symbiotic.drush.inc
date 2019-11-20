@@ -293,28 +293,45 @@ function drush_provision_symbiotic_hostmaster_enable_https() {
     drush_die('This command should only run on the Aegir hostmaster alias, i.e. @hm.');
   }
 
+  // Find the nid of the web server node
+  $nid_http = db_query("SELECT nid FROM hosting_service WHERE service = 'http' AND type = 'https_nginx'")->fetchField();
+
+  // Find the nid of the hostmaster node
+  // It should be the first site installed (and usually the only site at this point)
+  $nid_hm = db_query("SELECT nid FROM hosting_site ORDER BY nid ASC")->fetchField();
+
   // Check if https has already been enabled
   $count = db_query('SELECT count(*) FROM hosting_https_server')->fetchField();
 
   if ($count) {
     drush_log(dt("https has already been enabled on this server."), 'warning');
-    return;
+  }
+  else {
+    // Find the web server node (i.e. the one that's not a database server)
+    db_query("INSERT INTO hosting_https_server (nid, vid, https_port)
+      select s.nid, s.vid, 443
+        from hosting_server s
+        left join node n on (n.nid = s.nid)
+        left join hosting_db_server db on (db.nid = s.nid)
+       where db.nid is null");
+
+    // Enable https_nginx on that server
+    db_query("update hosting_service set type = 'https_nginx' where service = 'http' and type = 'nginx'");
+
+    // Enable LetsEncrypt
+    db_query("insert into hosting_service (vid,nid,service,type,port,available) values (2,2,'Certificate','LetsEncrypt', 0, 1)");
+    db_query("update hosting_https_site set https_enabled = 2 where nid = 10");
+
+    drush_log(dt("https has been enabled on this server."), 'ok');
   }
 
-  // Find the web server node (i.e. the one that's not a database server)
-  db_query("INSERT INTO hosting_https_server (nid, vid, https_port)
-    select s.nid, s.vid, 443
-      from hosting_server s
-      left join node n on (n.nid = s.nid)
-      left join hosting_db_server db on (db.nid = s.nid)
-     where db.nid is null");
+  // Force Aegir to run its tasks that will eventually enable https
+  $node = node_load($nid_http);
+  node_save($node);
 
-  // Enable https_nginx on that server
-  db_query("update hosting_service set type = 'https_nginx' where service = 'http' and type = 'nginx'");
-
-  // Enable LetsEncrypt
-  db_query("insert into hosting_service (vid,nid,service,type,port,available) values (2,2,'Certificate','LetsEncrypt', 0, 1)");
-  db_query("update hosting_https_site set https_enabled = 2 where nid = 10");
-
-  drush_log(dt("https has been enabled on this server."), 'ok');
+  // Same for the hostmaster node
+  // FIXME: this might run before the previous task has finished running
+  // FIXME: sometimes nginx needs a full restart for LE to work?
+  $node = node_load($nid_hm);
+  node_save($node);
 }
