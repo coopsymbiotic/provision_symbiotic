@@ -32,6 +32,9 @@ function provision_symbiotic_drush_command() {
   $items['provision-symbiotic-last-login'] = array(
     'description' => 'Returns the last login time from a user (excluding uid=1).',
   );
+  $items['provision-symbiotic-hostmaster-enable-https'] = array(
+    'description' => 'Enables https for the Aegir hostmaster.',
+  );
 
   return $items;
 }
@@ -280,4 +283,38 @@ function drush_provision_symbiotic_last_login() {
   foreach ($result as $record) {
     drush_log($record->name . ' ' . $record->t, 'ok');
   }
+}
+
+/**
+ * Implements the provision-symbiotic-hostmaster-enable-https
+ */
+function drush_provision_symbiotic_hostmaster_enable_https() {
+  if (d()->name != '@hm') {
+    drush_die('This command should only run on the Aegir hostmaster alias, i.e. @hm.');
+  }
+
+  // Check if https has already been enabled
+  $count = db_query('SELECT count(*) FROM hosting_https_server')->fetchField();
+
+  if ($count) {
+    drush_log(dt("https has already been enabled on this server."), 'warning');
+    return;
+  }
+
+  // Find the web server node (i.e. the one that's not a database server)
+  db_query("INSERT INTO hosting_https_server (nid, vid, https_port)
+    select s.nid, s.vid, 443
+      from hosting_server s
+      left join node n on (n.nid = s.nid)
+      left join hosting_db_server db on (db.nid = s.nid)
+     where db.nid is null");
+
+  // Enable https_nginx on that server
+  db_query("update hosting_service set type = 'https_nginx' where service = 'http' and type = 'nginx'");
+
+  // Enable LetsEncrypt
+  db_query("insert into hosting_service (vid,nid,service,type,port,available) values (2,2,'Certificate','LetsEncrypt', 0, 1)");
+  db_query("update hosting_https_site set https_enabled = 2 where nid = 10");
+
+  drush_log(dt("https has been enabled on this server."), 'ok');
 }
