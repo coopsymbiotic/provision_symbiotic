@@ -211,7 +211,7 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
     $result = drupal_http_request(d()->hosting_restapi_hostmaster . '/hosting/api/site/config?url=' . d()->uri . '&token=' . d()->hosting_restapi_token);
     $config = json_decode($result->data, TRUE);
 
-    variable_set('site_name', $config['data']['organization']['name']);
+    variable_set('site_name', $config['data']['site']['name']);
 
     # [ML] provision_spark sets no-reply-foo and this makes sense for symbiotic too,
     # because we don't have an SMTP provider setup at this point.
@@ -226,16 +226,22 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
         // 'email' => $config['data']['organization']['email'],
       ]);
 
-/*
-      civicrm_api3('Phone', 'Create', array(
-        'contact_id' => 1,
-        'phone' => $config['organization']['phone'],
-      ));
-*/
+      // Update uid=2, which is the default admin account (uid=1 is the superadmin, we do not give access to that)
+      db_query('UPDATE users SET mail = :mail, init = :mail, created = unix_timestamp(), access = 0, login = 0 WHERE uid = 2', [
+        ':mail' => $config['data']['individual']['email'],
+      ]);
 
-      // TODO: individual contact + create new user account & notify?
-      // however.. we can't notify & include the password by email
-      // and if the notify includes a one-time link, it would expire from the login-reset task (if it can work on uid=2).
+      // Update cid=3, which is the default individual contact
+      civicrm_api3('Contact', 'Create', [
+        'id' => 3,
+        'first_name' => $config['data']['individual']['first_name'],
+        'last_name' => $config['data']['individual']['last_name'],
+      ]);
+
+      civicrm_api3('Email', 'Create', [
+        'id' => 3,
+        'email' => $config['data']['individual']['email'],
+      ]);
     }
     catch (Exception $e) {
       drush_log('Symbiotic: failed to set some CiviCRM configurations: ' . $e->getMessage(), 'warning');
