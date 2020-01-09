@@ -52,7 +52,7 @@ function provision_symbiotic_provision_nginx_vhost_config($uri, $data = null) {
     $lines = explode("\n", $hosts);
 
     foreach ($lines as $line) {
-      if (preg_match('/^([^ ]+)\s+' . d()->uri . '/', $line, $matches)) {
+      if (preg_match('/^([^\s]+)\s+' . d()->uri . '/', $line, $matches)) {
         $allow[] = $matches[1];
       }
     }
@@ -69,6 +69,22 @@ function provision_symbiotic_provision_nginx_vhost_config($uri, $data = null) {
     $htaccess .= "    deny all;\n";
     $htaccess .= "    fastcgi_pass unix:$phpfpm_socket_path;\n";
     $htaccess .= "  }\n\n";
+
+    // IP whitelisting, if enabled
+    $whitelist = variable_get('provision_symbiotic_whitelist');
+
+    if ($whitelist) {
+      $whitelist = explode(',', $whitelist);
+
+      $htaccess .= "  # IP whitelisting by provision_symbiotic\n";
+
+      foreach ($whitelist as $ip) {
+        $ip = trim($ip);
+        $htaccess .= "  allow $ip;\n";
+      }
+
+      $htaccess .= "  deny all;\n";
+    }
   }
 
   // D8 extern support
@@ -138,18 +154,27 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
 
     $extensions_suffix = NULL;
 
-    if (file_exists("$root/sites/$host/files/civicrm/extensions/")) {
-      $extensions_suffix = 'files/civicrm/extensions';
+    if (file_exists("$root/sites/$host/modules/extensions/")) {
+      // Symbiotic default
+      $extensions_suffix = 'modules/extensions';
     }
-
-    if (file_exists("$root/sites/$host/modules/civi-extensions/")) {
+    elseif (file_exists("$root/sites/$host/modules/civi-extensions/")) {
+      // Legacy Symbiotic
       $extensions_suffix = 'modules/civi-extensions';
     }
-
-    if (file_exists("$root/sites/$host/civiext/")) {
+    elseif (file_exists("$root/sites/$host/civiext/")) {
+      // civicrm.org
       $extensions_suffix = 'civiext';
     }
+    elseif (file_exists("$root/sites/$host/files/civicrm/extensions/")) {
+      $extensions_suffix = 'files/civicrm/extensions';
+    }
+    elseif (file_exists("$root/sites/$host/files/civicrm/ext/")) {
+      // CiviCRM default
+      $extensions_suffix = 'files/civicrm/ext';
+    }
 
+    // Symbiotic default
     if (!$extensions_suffix) {
       $extensions_suffix = 'modules/extensions';
     }
@@ -160,7 +185,7 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
     Civi::settings()->set('imageUploadDir', "$root/sites/$host/files/civicrm/persist/contribute");
     Civi::settings()->set('imageUploadURL', "https://$host/sites/$host/files/civicrm/persist/contribute");
 
-    _provision_symbiotic_disable_iats_on_devsites();
+    _provision_symbiotic_disable_jobs_on_devsites();
 
     // The "verify" task can run regularly. Check to make sure we only run once,
     // after the initial clone.
@@ -186,7 +211,7 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
     $result = drupal_http_request(d()->hosting_restapi_hostmaster . '/hosting/api/site/config?url=' . d()->uri . '&token=' . d()->hosting_restapi_token);
     $config = json_decode($result->data, TRUE);
 
-    variable_set('site_name', $config['data']['organization']['name']);
+    variable_set('site_name', $config['data']['site']['name']);
 
     # [ML] provision_spark sets no-reply-foo and this makes sense for symbiotic too,
     # because we don't have an SMTP provider setup at this point.
@@ -201,16 +226,22 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
         // 'email' => $config['data']['organization']['email'],
       ]);
 
-/*
-      civicrm_api3('Phone', 'Create', array(
-        'contact_id' => 1,
-        'phone' => $config['organization']['phone'],
-      ));
-*/
+      // Update uid=2, which is the default admin account (uid=1 is the superadmin, we do not give access to that)
+      db_query('UPDATE users SET mail = :mail, init = :mail, created = unix_timestamp(), access = 0, login = 0 WHERE uid = 2', [
+        ':mail' => $config['data']['individual']['email'],
+      ]);
 
-      // TODO: individual contact + create new user account & notify?
-      // however.. we can't notify & include the password by email
-      // and if the notify includes a one-time link, it would expire from the login-reset task (if it can work on uid=2).
+      // Update cid=3, which is the default individual contact
+      civicrm_api3('Contact', 'Create', [
+        'id' => 3,
+        'first_name' => $config['data']['individual']['first_name'],
+        'last_name' => $config['data']['individual']['last_name'],
+      ]);
+
+      civicrm_api3('Email', 'Create', [
+        'id' => 3,
+        'email' => $config['data']['individual']['email'],
+      ]);
     }
     catch (Exception $e) {
       drush_log('Symbiotic: failed to set some CiviCRM configurations: ' . $e->getMessage(), 'warning');
@@ -221,14 +252,14 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
 }
 
 /**
- * Automatically disables iATS logins on dev sites.
+ * Automatically sets Environment=Development and disables iATS logins on dev sites.
  *
  * NB: we disable by changing the login, since the iATS recurring Scheduled Job
- * will still run even if the payment processor is disabled.
- *
- * Related issue: https://lab.symbiotic.coop/jvillage/jmanage/issues/1538
+ * will still run even if the payment processor is disabled. Since recent 5.x CiviCRM
+ * releases, jobs are not run when Environment=Development, but we are still doing
+ * this just in case someone accidentally changes the environment back to 'production'.
  */
-function _provision_symbiotic_disable_iats_on_devsites() {
+function _provision_symbiotic_disable_jobs_on_devsites() {
   // Match against dev patterns:
   // - crm-dev.* (SymbioTIC)
   // - *.symbiodev.xyz (SymbioTIC)
@@ -253,7 +284,9 @@ function _provision_symbiotic_disable_iats_on_devsites() {
     return;
   }
 
-  drush_log("Symbiotic: This is a dev site, checking if iATS needs to be disabled", 'ok');
+  drush_log("Symbiotic: This is a dev site, setting environment=Development and checking if iATS needs to be disabled", 'ok');
+
+  Civi::settings()->set('environment', 'Development');
 
   $result = civicrm_api3('PaymentProcessor', 'get', [
     'option.limit' => 0,
