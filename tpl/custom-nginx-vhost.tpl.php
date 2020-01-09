@@ -86,8 +86,9 @@ server {
   root          <?php print "{$this->root}"; ?>;
   <?php print $extra_config; ?>
 <?php
-if ($this->redirection || $ssl_redirection) {
-  if ($ssl_redirection && !$this->redirection) {
+// NB: $this->ssl_redirection is used by hosting_wordpress
+if ($this->redirection || $ssl_redirection || $this->ssl_redirection) {
+  if (($ssl_redirection || $this->ssl_redirection) && !$this->redirection) {
     // redirect aliases in non-ssl to the same alias on ssl.
     print "\n";
     print "  location / {\n";
