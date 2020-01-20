@@ -279,10 +279,11 @@ map $http_user_agent $deny_on_high_load {
 ### Deny listed requests for security reasons.
 ###
 ### [ML] Do not deny ";", see: https://www.drupal.org/node/2667210
+### [ML] Also do not deny "\.php.+src" because of CiviCRM on WordPress (mfdc/civicrm#65)
 ###
 map $args $is_denied {
   default  '';
-  ~*delete.+from|insert.+into|select.+from|union.+select|onload|\.php.+src|system\(.+|document\.cookie|\.\. is_denied;
+  ~*delete.+from|insert.+into|select.+from|union.+select|onload|system\(.+|document\.cookie|\.\. is_denied;
 }
 <?php endif; ?>
 
