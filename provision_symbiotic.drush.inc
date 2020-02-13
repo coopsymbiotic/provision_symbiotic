@@ -300,7 +300,7 @@ function _provision_symbiotic_last_login() {
   $config = CRM_Core_Config::singleton();
 
   if ($config->userFramework == 'Drupal') {
-    $last = db_query('SELECT from_unixtime(access) as t from users where uid != 1 order by access desc limit 1')->fetchField();
+    $last = db_query('SELECT date(from_unixtime(access)) as t from users where uid != 1 order by access desc limit 1')->fetchField();
     return $last;
   }
   elseif ($config->userFramework == 'Drupal8') {
