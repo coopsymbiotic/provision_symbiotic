@@ -237,7 +237,15 @@ function drush_provision_symbiotic_civicrm_stats() {
   echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_mailing') . ',';
   echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_case WHERE is_deleted = 0') . ',';
   echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_event') . ',';
-  echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_participant WHERE is_test = 0');
+  echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_participant WHERE is_test = 0') . ',';
+
+  // Fetch the payment processors used
+  $processors = _provision_symbiotic_get_payment_processors();
+  echo implode('+', $processors) . ',';
+
+  // Fetch the last login
+  $last = _provision_symbiotic_last_login();
+  echo $last;
 }
 
 /**
@@ -276,13 +284,64 @@ function drush_provision_symbiotic_translate_options($language, $option_group_id
 
 /**
  * Implements the provision-symbiotic-last-login command.
+ *
+ * Returns the date of last login from a non-superadmin.
  */
 function drush_provision_symbiotic_last_login() {
-  $result = db_query('SELECT name, from_unixtime(access) as t from users order by access desc limit 1');
+  $last = _provision_symbiotic_last_login();
+  drush_log('Last login: ' . $record->t, 'ok');
+}
 
-  foreach ($result as $record) {
-    drush_log($record->name . ' ' . $record->t, 'ok');
+function _provision_symbiotic_last_login() {
+  if (!provision_symbiotic_civicrm_init()) {
+    return null;
   }
+
+  $config = CRM_Core_Config::singleton();
+
+  if ($config->userFramework == 'Drupal') {
+    $last = db_query('SELECT from_unixtime(access) as t from users where uid != 1 order by access desc limit 1')->fetchField();
+    return $last;
+  }
+  elseif ($config->userFramework == 'Drupal8') {
+    // TODO
+    return null;
+  }
+  elseif ($config->userFramework == 'WordPress') {
+    // TODO
+    return null;
+  }
+
+  return null;
+}
+
+/**
+ * Helper function that returns the list of payment processors enabled.
+ */
+function _provision_symbiotic_get_payment_processors() {
+  if (!provision_symbiotic_civicrm_init()) {
+    return null;
+  }
+
+  $processors = [];
+
+  $result = civicrm_api3('PaymentProcessor', 'get', [
+    'is_active' => 1,
+    'is_test' => 0,
+    'api.PaymentProcessorType.get' => [],
+  ]);
+
+  foreach ($result['values'] as $key => $val) {
+    $type = $val['api.PaymentProcessorType.get']['values'][0]['name'];
+
+    if ($type == 'Dummy') {
+      continue;
+    }
+
+    $processors[] = $type;
+  }
+
+  return $processors;
 }
 
 /**
