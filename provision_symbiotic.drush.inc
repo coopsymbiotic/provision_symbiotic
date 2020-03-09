@@ -35,6 +35,9 @@ function provision_symbiotic_drush_command() {
   $items['provision-symbiotic-hostmaster-enable-https'] = array(
     'description' => 'Enables https for the Aegir hostmaster.',
   );
+  $items['provision-symbiotic-delete-stripe-webhooks'] = array(
+    'description' => 'Deletes Stripe webhooks (helps for 6.3.2 upgrades).',
+  );
 
   return $items;
 }
@@ -393,4 +396,18 @@ function drush_provision_symbiotic_hostmaster_enable_https() {
   // FIXME: sometimes nginx needs a full restart for LE to work?
   $node = node_load($nid_hm);
   node_save($node);
+}
+
+/**
+ * Implements the provision-symbiotic-delete-stripe-webhooks
+ */
+function drush_provision_symbiotic_delete_stripe_webhooks() {
+  provision_symbiotic_civicrm_init();
+
+  $webhooks = \Stripe\WebhookEndpoint::all(["limit" => 100]);
+
+  foreach ($webhooks->data as $wh) {
+    drush_log('Deleting webhook: ' . print_r($wh, 1), 'ok');
+    $wh->delete();
+  }
 }
