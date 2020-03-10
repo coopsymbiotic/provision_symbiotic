@@ -404,10 +404,22 @@ function drush_provision_symbiotic_hostmaster_enable_https() {
 function drush_provision_symbiotic_delete_stripe_webhooks() {
   provision_symbiotic_civicrm_init();
 
-  $webhooks = \Stripe\WebhookEndpoint::all(["limit" => 100]);
+  $result = civicrm_api3('PaymentProcessor', 'get', [
+    'class_name' => 'Payment_Stripe',
+    'is_active' => 1,
+    'domain_id' => CRM_Core_Config::domainID(),
+  ]);
 
-  foreach ($webhooks->data as $wh) {
-    drush_log('Deleting webhook: ' . print_r($wh, 1), 'ok');
-    $wh->delete();
+  foreach ($result['values'] as $paymentProcessor) {
+    $paymentProcessorId = $paymentProcessor['id'];
+    $processor = new CRM_Core_Payment_Stripe('', civicrm_api3('PaymentProcessor', 'getsingle', ['id' => $paymentProcessorId]));
+    $processor->setAPIParams();
+
+    $webhooks = \Stripe\WebhookEndpoint::all(["limit" => 100]);
+
+    foreach ($webhooks->data as $wh) {
+      drush_log('Deleting webhook: ' . print_r($wh, 1), 'ok');
+      $wh->delete();
+    }
   }
 }
