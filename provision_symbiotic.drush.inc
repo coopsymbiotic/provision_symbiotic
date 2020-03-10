@@ -35,6 +35,9 @@ function provision_symbiotic_drush_command() {
   $items['provision-symbiotic-hostmaster-enable-https'] = array(
     'description' => 'Enables https for the Aegir hostmaster.',
   );
+  $items['provision-symbiotic-list-stripe-webhooks'] = array(
+    'description' => 'List Stripe webhooks (helps for 6.3.2 upgrades).',
+  );
   $items['provision-symbiotic-delete-stripe-webhooks'] = array(
     'description' => 'Deletes Stripe webhooks (helps for 6.3.2 upgrades).',
   );
@@ -396,6 +399,31 @@ function drush_provision_symbiotic_hostmaster_enable_https() {
   // FIXME: sometimes nginx needs a full restart for LE to work?
   $node = node_load($nid_hm);
   node_save($node);
+}
+
+/**
+ * Implements the provision-symbiotic-list-stripe-webhooks
+ */
+function drush_provision_symbiotic_list_stripe_webhooks() {
+  provision_symbiotic_civicrm_init();
+
+  $result = civicrm_api3('PaymentProcessor', 'get', [
+    'class_name' => 'Payment_Stripe',
+    'is_active' => 1,
+    'domain_id' => CRM_Core_Config::domainID(),
+  ]);
+
+  foreach ($result['values'] as $paymentProcessor) {
+    $paymentProcessorId = $paymentProcessor['id'];
+    $processor = new CRM_Core_Payment_Stripe('', civicrm_api3('PaymentProcessor', 'getsingle', ['id' => $paymentProcessorId]));
+    $processor->setAPIParams();
+
+    $webhooks = \Stripe\WebhookEndpoint::all(["limit" => 100]);
+
+    foreach ($webhooks->data as $wh) {
+      drush_log(print_r($wh, 1), 'ok');
+    }
+  }
 }
 
 /**
