@@ -154,7 +154,11 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
 
     $extensions_suffix = NULL;
 
-    if (file_exists("$root/sites/$host/modules/extensions/")) {
+    if (preg_match('/civi-go.net$/', $host)) {
+      // iXiam default
+      $extensions_suffix = 'files/civicrm/ext';
+    }
+    elseif (file_exists("$root/sites/$host/modules/extensions/")) {
       // Symbiotic default
       $extensions_suffix = 'modules/extensions';
     }
