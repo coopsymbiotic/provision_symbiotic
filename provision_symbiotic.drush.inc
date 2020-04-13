@@ -249,6 +249,17 @@ function drush_provision_symbiotic_civicrm_stats() {
   $processors = _provision_symbiotic_get_payment_processors();
   echo implode('+', $processors) . ',';
 
+  // Fetch the available languages
+  $languages = CRM_Core_I18n::languages(true);
+
+  if (!empty($languages)) {
+    echo implode('+', $languages) . ',';
+  }
+  else {
+    $language = CRM_Core_I18n::getLocale();
+    echo $language . ',';
+  }
+
   // Fetch the last login
   $last = _provision_symbiotic_last_login();
   echo $last;
