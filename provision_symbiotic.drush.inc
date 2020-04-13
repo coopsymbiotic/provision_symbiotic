@@ -253,7 +253,7 @@ function drush_provision_symbiotic_civicrm_stats() {
   $languages = CRM_Core_I18n::languages(true);
 
   if (!empty($languages)) {
-    echo implode('+', $languages) . ',';
+    echo implode('+', array_keys($languages)) . ',';
   }
   else {
     $language = CRM_Core_I18n::getLocale();
