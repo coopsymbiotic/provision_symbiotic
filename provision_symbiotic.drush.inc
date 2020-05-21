@@ -35,6 +35,12 @@ function provision_symbiotic_drush_command() {
   $items['provision-symbiotic-hostmaster-enable-https'] = array(
     'description' => 'Enables https for the Aegir hostmaster.',
   );
+  $items['provision-symbiotic-list-stripe-webhooks'] = array(
+    'description' => 'List Stripe webhooks (helps for 6.3.2 upgrades).',
+  );
+  $items['provision-symbiotic-delete-stripe-webhooks'] = array(
+    'description' => 'Deletes Stripe webhooks (helps for 6.3.2 upgrades).',
+  );
 
   return $items;
 }
@@ -243,6 +249,17 @@ function drush_provision_symbiotic_civicrm_stats() {
   $processors = _provision_symbiotic_get_payment_processors();
   echo implode('+', $processors) . ',';
 
+  // Fetch the available languages
+  $languages = CRM_Core_I18n::languages(true);
+
+  if (!empty($languages)) {
+    echo implode('+', array_keys($languages)) . ',';
+  }
+  else {
+    $language = CRM_Core_I18n::getLocale();
+    echo $language . ',';
+  }
+
   // Fetch the last login
   $last = _provision_symbiotic_last_login();
   echo $last;
@@ -300,7 +317,7 @@ function _provision_symbiotic_last_login() {
   $config = CRM_Core_Config::singleton();
 
   if ($config->userFramework == 'Drupal') {
-    $last = db_query('SELECT date(from_unixtime(access)) as t from users where uid != 1 order by access desc limit 1')->fetchField();
+    $last = db_query('SELECT date(from_unixtime(access)) as t from {users} where uid != 1 order by access desc limit 1')->fetchField();
     return $last;
   }
   elseif ($config->userFramework == 'Drupal8') {
@@ -393,4 +410,55 @@ function drush_provision_symbiotic_hostmaster_enable_https() {
   // FIXME: sometimes nginx needs a full restart for LE to work?
   $node = node_load($nid_hm);
   node_save($node);
+}
+
+/**
+ * Implements the provision-symbiotic-list-stripe-webhooks
+ */
+function drush_provision_symbiotic_list_stripe_webhooks() {
+  provision_symbiotic_civicrm_init();
+
+  $result = civicrm_api3('PaymentProcessor', 'get', [
+    'class_name' => 'Payment_Stripe',
+    'is_active' => 1,
+    'domain_id' => CRM_Core_Config::domainID(),
+  ]);
+
+  foreach ($result['values'] as $paymentProcessor) {
+    $paymentProcessorId = $paymentProcessor['id'];
+    $processor = new CRM_Core_Payment_Stripe('', civicrm_api3('PaymentProcessor', 'getsingle', ['id' => $paymentProcessorId]));
+    $processor->setAPIParams();
+
+    $webhooks = \Stripe\WebhookEndpoint::all(["limit" => 100]);
+
+    foreach ($webhooks->data as $wh) {
+      drush_log(print_r($wh, 1), 'ok');
+    }
+  }
+}
+
+/**
+ * Implements the provision-symbiotic-delete-stripe-webhooks
+ */
+function drush_provision_symbiotic_delete_stripe_webhooks() {
+  provision_symbiotic_civicrm_init();
+
+  $result = civicrm_api3('PaymentProcessor', 'get', [
+    'class_name' => 'Payment_Stripe',
+    'is_active' => 1,
+    'domain_id' => CRM_Core_Config::domainID(),
+  ]);
+
+  foreach ($result['values'] as $paymentProcessor) {
+    $paymentProcessorId = $paymentProcessor['id'];
+    $processor = new CRM_Core_Payment_Stripe('', civicrm_api3('PaymentProcessor', 'getsingle', ['id' => $paymentProcessorId]));
+    $processor->setAPIParams();
+
+    $webhooks = \Stripe\WebhookEndpoint::all(["limit" => 100]);
+
+    foreach ($webhooks->data as $wh) {
+      drush_log('Deleting webhook: ' . print_r($wh, 1), 'ok');
+      $wh->delete();
+    }
+  }
 }

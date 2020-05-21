@@ -1329,6 +1329,9 @@ location @drupal {
   if ( -e $document_root/core ) {
     set $core_detected "Modern";
   }
+  if ( -e $document_root/wp-config.php ) {
+    set $core_detected "WordPress";
+  }
   error_page 402 = @legacy;
   if ( $core_detected = Legacy ) {
     return 402;
@@ -1340,6 +1343,10 @@ location @drupal {
   error_page 418 = @modern;
   if ( $core_detected = Modern ) {
     return 418;
+  }
+  error_page 419 = @wordpress;
+  if ( $core_detected = WordPress ) {
+    return 419;
   }
   ###
   ### Fallback
@@ -1370,6 +1377,14 @@ location @regular {
 location @modern {
   set $location_detected "Modern";
   try_files $uri /index.php?$query_string;
+}
+
+###
+### Special location for WordPress.
+###
+location @wordpress {
+  set $location_detected "WordPress";
+  try_files $uri /index.php;
 }
 
 <?php if ($nginx_config_mode == 'extended'): ?>
