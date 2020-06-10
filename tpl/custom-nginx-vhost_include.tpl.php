@@ -1383,8 +1383,9 @@ location @modern {
 ### Special location for WordPress.
 ###
 location @wordpress {
+  # https://wordpress.org/support/article/nginx/#general-wordpress-rules
   set $location_detected "WordPress";
-  try_files $uri /index.php;
+  try_files $uri $uri/ /index.php?$args;
 }
 
 <?php if ($nginx_config_mode == 'extended'): ?>
