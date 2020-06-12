@@ -191,25 +191,53 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
 
     _provision_symbiotic_disable_jobs_on_devsites();
 
-    // The "verify" task can run regularly. Check to make sure we only run once,
-    // after the initial clone.
-    if (drush_drupal_major_version() == 8) {
-      // Drupal8 is not supported for now. We don't really use this anyway.
-      return;
-    }
-
-    if (variable_get('hosting_restapi_initial_done', NULL)) {
-      return;
-    }
-
     // We can't auto-configure sites without a token.
     // This includes the model site, the hostmaster, or sites not managed through hosting_restapi.
-    if (! d()->hosting_restapi_token) {
+    if (!d()->hosting_restapi_token) {
       return;
     }
 
-    variable_set('hosting_restapi_token', d()->hosting_restapi_token);
-    variable_set('hosting_restapi_hostmaster', d()->hosting_restapi_hostmaster);
+    // Migrate to CiviCRM settings instead of Drupal variables
+    if (drush_drupal_major_version() == 7) {
+      $migrate = [
+        'hosting_restapi_initial_done',
+        'hosting_restapi_token',
+        'hosting_restapi_hostmaster',
+      ];
+
+      foreach ($migrate as $setting) {
+        $val = Civi::settings()->get($setting);
+
+        if (!$val) {
+          $val = variable_get($setting);
+          Civi::settings()->set($setting, $val);
+        }
+      }
+    }
+
+    if (!Civi::settings()->get('hosting_restapi_token')) {
+      Civi::settings()->set('hosting_restapi_token', d()->hosting_restapi_token);
+      Civi::settings()->set('hosting_restapi_hostmaster', d()->hosting_restapi_hostmaster);
+    }
+
+    // Change the CiviCRM site_id, if necessary (ex: cloning from a template site)
+    $site_id = CRM_Utils_System::getSiteID();
+
+    if ($site_id == 'template' && strpos('template', $host) === FALSE && strpos('modele', $host) === FALSE) {
+      $sid = md5('sid_' . time() . $host);
+      civicrm_api3('Setting', 'create', ['domain_id' => 'all', 'site_id' => $sid]);
+    }
+
+    // The "verify" task can run regularly. Check to make sure we only run once,
+    // after the initial clone.
+    if (Civi::settings()->get('hosting_restapi_initial_done')) {
+      return;
+    }
+
+    // @todo Drupal8 is not currently supported
+    if (drush_drupal_major_version() == 8) {
+      return;
+    }
 
     // Request the site configuration
     $result = drupal_http_request(d()->hosting_restapi_hostmaster . '/hosting/api/site/config?url=' . d()->uri . '&token=' . d()->hosting_restapi_token);
