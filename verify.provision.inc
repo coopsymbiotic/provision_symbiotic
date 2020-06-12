@@ -191,6 +191,14 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
 
     _provision_symbiotic_disable_jobs_on_devsites();
 
+    // Change the CiviCRM site_id, if necessary (ex: cloning from a template site)
+    $site_id = CRM_Utils_System::getSiteID();
+
+    if ($site_id == 'template' && strpos($host, 'template') === FALSE && strpos($host, 'modele') === FALSE) {
+      $sid = md5('sid_' . time() . $host);
+      civicrm_api3('Setting', 'create', ['domain_id' => 'all', 'site_id' => $sid]);
+    }
+
     // We can't auto-configure sites without a token.
     // This includes the model site, the hostmaster, or sites not managed through hosting_restapi.
     if (!d()->hosting_restapi_token) {
@@ -218,14 +226,6 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
     if (!Civi::settings()->get('hosting_restapi_token')) {
       Civi::settings()->set('hosting_restapi_token', d()->hosting_restapi_token);
       Civi::settings()->set('hosting_restapi_hostmaster', d()->hosting_restapi_hostmaster);
-    }
-
-    // Change the CiviCRM site_id, if necessary (ex: cloning from a template site)
-    $site_id = CRM_Utils_System::getSiteID();
-
-    if ($site_id == 'template' && strpos('template', $host) === FALSE && strpos('modele', $host) === FALSE) {
-      $sid = md5('sid_' . time() . $host);
-      civicrm_api3('Setting', 'create', ['domain_id' => 'all', 'site_id' => $sid]);
     }
 
     // The "verify" task can run regularly. Check to make sure we only run once,
