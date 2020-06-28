@@ -67,6 +67,7 @@ function drush_provision_symbiotic_login() {
   }
 
   $onetime = user_pass_reset_url($account) . '/login';
+  $onetime = preg_replace('/http:/', 'https:', $onetime);
 
   // pass the login link to the front end
   drush_set_option('symbiotic_login', $onetime);
