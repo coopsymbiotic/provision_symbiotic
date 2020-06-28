@@ -218,7 +218,10 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
 
         if (!$val) {
           $val = variable_get($setting);
-          Civi::settings()->set($setting, $val);
+
+          if ($val) {
+            Civi::settings()->set($setting, $val);
+          }
         }
       }
     }
@@ -240,7 +243,10 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
     }
 
     // Request the site configuration
-    $result = drupal_http_request(d()->hosting_restapi_hostmaster . '/hosting/api/site/config?url=' . d()->uri . '&token=' . d()->hosting_restapi_token);
+    $token = Civi::settings()->get('hosting_restapi_token');
+    $hostmaster =  Civi::settings()->get('hosting_restapi_hostmaster');
+
+    $result = drupal_http_request($hostmaster . '/hosting/api/site/config?url=' . d()->uri . '&token=' . $token);
     $config = json_decode($result->data, TRUE);
 
     variable_set('site_name', $config['data']['site']['name']);
@@ -279,7 +285,7 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
       drush_log('Symbiotic: failed to set some CiviCRM configurations: ' . $e->getMessage(), 'warning');
     }
 
-    variable_set('hosting_restapi_initial_done', 1);
+    Civi::settings()->set('hosting_restapi_initial_done', 1);
   }
 }
 
