@@ -285,6 +285,23 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
       drush_log('Symbiotic: failed to set some CiviCRM configurations: ' . $e->getMessage(), 'warning');
     }
 
+    // Set the locale, if possible (depends on provision_spark)
+    $locale = mb_strtolower($config['data']['site']['locale']);
+    $locale = preg_replace('/_/', '', $locale);
+
+    if (function_exists('drush_provision_spark_' . $locale)) {
+      $f = "drush_provision_spark_" . $locale;
+      $f();
+    }
+    else {
+      $locale = substr($locale, 0, 2);
+
+      if (function_exists('drush_provision_spark_' . $locale)) {
+        $f = "drush_provision_spark_" . $locale;
+        $f();
+      }
+    }
+
     Civi::settings()->set('hosting_restapi_initial_done', 1);
   }
 }
