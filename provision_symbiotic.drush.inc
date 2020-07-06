@@ -241,7 +241,8 @@ function drush_provision_symbiotic_civicrm_stats() {
   echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_activity WHERE is_test = 0 AND is_deleted = 0 AND is_current_revision = 1') . ',';
   echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_contribution WHERE is_test = 0') . ',';
   echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_membership WHERE is_test = 0') . ',';
-  echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_mailing') . ',';
+  echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_mailing WHERE is_completed=1 AND sms_provider_id IS NULL') . ',';
+  echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_mailing WHERE is_completed=1 AND sms_provider_id IS NOT NULL') . ',';
   echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_case WHERE is_deleted = 0') . ',';
   echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_event') . ',';
   echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_participant WHERE is_test = 0') . ',';

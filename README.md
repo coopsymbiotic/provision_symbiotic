@@ -9,6 +9,7 @@ Includes:
 * Initial SaaS configuration on verify (if a token was found)
 * Always bind vhosts `*`, even for https (therefore using SNI), so that we can also easily support IPv6.
 * Nginx strict SSL configurations (thanks ouaibe/duraconf)
+* Various drush commands to help with site management at Symbiotic. Includes `provision-symbiotic-civicrm-stats`, which is called by our fork of aegir-weekly.sh.
 
 This module overrides the vhost template (c.f. 'tpl' directory) for Apache and Nginx.
 
