@@ -115,8 +115,7 @@ function provision_symbiotic_provision_nginx_vhost_config($uri, $data = null) {
  * Implements hook_post_provision_verify().
  */
 function drush_provision_symbiotic_post_provision_verify($url = NULL) {
-  if (d()->type == 'site') {
-
+  if (d()->type === 'site') {
     // Only run on CiviCRM sites.
     // For example, the "hostmaster" site does not run CiviCRM.
     if (!provision_symbiotic_civicrm_init()) {
@@ -303,6 +302,18 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
     }
 
     Civi::settings()->set('hosting_restapi_initial_done', 1);
+  }
+  elseif (d()->type === 'server') {
+    // Based on provision/platform/verify.provision.inc (pre provision verify)
+    // We allow www-data to access backups so that they can download backups
+    // using hosting_restapi and our CiviCRM aegirbackups extension.
+    // While this could mean that a site could access backups from another site,
+    // it's mitigated by 1) our infra runs only code from trusted clients (we do
+    // not let them deploy custom code on a shared server), and 2) backups are
+    // short-lived.
+    if (d()->name == '@server_master') {
+      provision_file()->create_dir(d()->backup_path, dt('Backup'), 0710);
+    }
   }
 }
 
