@@ -85,6 +85,20 @@ function provision_symbiotic_provision_nginx_vhost_config($uri, $data = null) {
 
       $htaccess .= "  deny all;\n";
     }
+
+    // Restrict access to the Ansible inventory
+    $htaccess .= "  location /inventory {\n";
+    $htaccess .= "    tcp_nopush off;\n";
+    $htaccess .= "    access_log off;\n";
+    $htaccess .= "    keepalive_requests 0;\n";
+
+    foreach ($allow as $a) {
+      $htaccess .= "    allow $a;\n";
+    }
+
+    $htaccess .= "    deny all;\n";
+    $htaccess .= "    fastcgi_pass unix:$phpfpm_socket_path;\n";
+    $htaccess .= "  }\n";
   }
 
   // D8 extern support
