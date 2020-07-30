@@ -97,7 +97,7 @@ function provision_symbiotic_provision_nginx_vhost_config($uri, $data = null) {
     }
 
     $htaccess .= "    deny all;\n";
-    $htaccess .= "    fastcgi_pass unix:$phpfpm_socket_path;\n";
+    $htaccess .= "    try_files \$uri @drupal;\n";
     $htaccess .= "  }\n";
   }
 
