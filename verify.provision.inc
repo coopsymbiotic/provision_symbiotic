@@ -21,6 +21,16 @@ function provision_symbiotic_provision_apache_vhost_config($uri, $data = null) {
   // Git repos can be cloned through https
   $htaccess .= 'RedirectMatch 404 ^/\.git.*$' . "\n\n";
 
+  // Workaround for extensions with css/js (ex: shoreditch) in the /vendor directory
+  // on multilingual sites with language prefix.
+  // On nginx (which we recommend over Apache), we use provision_customhtaccess and
+  // store this in the custom-nginx.conf of each site (but we should probably add here too).
+  $htaccess .=
+      '<IfModule mod_rewrite.c>' . "\n"
+    . '  RewriteEngine on' . "\n"
+    . '  RewriteRule ^/[a-z][a-z]/vendor/(.*)$ /vendor/$1 [L]' . "\n"
+    . '</IfModule>' . "\n\n";
+
   return $htaccess;
 }
 
