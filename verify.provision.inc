@@ -57,6 +57,12 @@ function provision_symbiotic_provision_nginx_vhost_config($uri, $data = null) {
       }
     }
 
+    // Add other IPs from Symbiotic infra, ex: for inventory access
+    if ($t = variable_get('provision_symbiotic_system_whitelist')) {
+      $t = explode(',', $t);
+      $allow = array_merge($allow, $t);
+    }
+
     $htaccess .= "  location ~ ^/fpm-(status|ping)\$ {\n";
     $htaccess .= "    tcp_nopush off;\n";
     $htaccess .= "    access_log off;\n";
