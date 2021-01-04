@@ -95,7 +95,7 @@ if ($this->redirection || $ssl_redirection || $this->ssl_redirection) {
     print "    return 301 https://\$host\$request_uri;\n";
     print "  }\n";
   }
-  elseif ($ssl_redirection && $this->redirection) {
+  elseif (($ssl_redirection || $this->ssl_redirection) && $this->redirection) {
     // redirect all aliases + main uri to the main https uri.
     print "\n";
     print "  location / {\n";

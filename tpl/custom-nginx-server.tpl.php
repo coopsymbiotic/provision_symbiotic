@@ -78,7 +78,8 @@ if ($nginx_has_upload_progress) {
  ## Size Limits
   client_body_buffer_size        64k;
   client_header_buffer_size      32k;
-  client_max_body_size          100m;
+  # This is a bit intense, but works well with plupload
+  client_max_body_size            1g;
   connection_pool_size           256;
   fastcgi_buffer_size           128k;
   fastcgi_buffers             256 4k;
