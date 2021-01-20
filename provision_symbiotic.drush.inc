@@ -346,7 +346,7 @@ function _provision_symbiotic_last_login() {
 function drush_provision_symbiotic_cleanup() {
   // Find usage stats before cleanup
   $before = _provision_symbiotic_get_db_stats();
-  drush_log('TOTAL Disk usage [before]: ' . $before['total']['disk_used'] . ' MB, reversed space: ' . $before['total']['disk_free'] . ' MB', 'ok');
+  drush_log('TOTAL Disk usage [before]: ' . $before['total']['disk_used'] . ' MB, reserved space: ' . $before['total']['disk_free'] . ' MB', 'ok');
 
   // Start by deleting potentially large log tables
   if (provision_symbiotic_civicrm_init()) {
@@ -357,16 +357,16 @@ function drush_provision_symbiotic_cleanup() {
 
   // Optimize fragmented tables
   foreach ($before['tables'] as $key => $stat) {
-    drush_log('Fragmented table [before]: ' . $key . ': ' . $stat['disk_used'] . ' MB, reversed space: ' . $stat['disk_free'] . ' MB', 'warning');
+    drush_log('Fragmented table [before]: ' . $key . ': ' . $stat['disk_used'] . ' MB, reserved space: ' . $stat['disk_free'] . ' MB', 'warning');
     db_query('OPTIMIZE table ' . $key);
   }
 
   // Show stats after
   $after = _provision_symbiotic_get_db_stats();
-  drush_log('TOTAL Disk usage [after]: ' . $after['total']['disk_used'] . ' MB, reversed space: ' . $after['total']['disk_free'] . ' MB', 'ok');
+  drush_log('TOTAL Disk usage [after]: ' . $after['total']['disk_used'] . ' MB, reserved space: ' . $after['total']['disk_free'] . ' MB', 'ok');
 
   foreach ($after['tables'] as $key => $stat) {
-    drush_log('Fragmented table [after]: ' . $key . ': ' . $stat['disk_used'] . ' MB, reversed space: ' . $stat['disk_free'] . ' MB', 'warning');
+    drush_log('Fragmented table [after]: ' . $key . ': ' . $stat['disk_used'] . ' MB, reserved space: ' . $stat['disk_free'] . ' MB', 'warning');
   }
 
   // @todo Consider truncating specific cache tables
