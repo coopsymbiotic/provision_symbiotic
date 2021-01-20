@@ -32,6 +32,9 @@ function provision_symbiotic_drush_command() {
   $items['provision-symbiotic-last-login'] = array(
     'description' => 'Returns the last login time from a user (excluding uid=1).',
   );
+  $items['provision-symbiotic-cleanup'] = array(
+    'description' => 'Runs database and potentially other cleanup operations (called from aegir-weekly).',
+  );
   $items['provision-symbiotic-hostmaster-enable-https'] = array(
     'description' => 'Enables https for the Aegir hostmaster.',
   );
@@ -332,6 +335,93 @@ function _provision_symbiotic_last_login() {
   }
 
   return null;
+}
+
+/**
+ * Implements the provision-symbiotic-cleanup command.
+ *
+ * Runs database (and potentially other) cleanup operations.
+ * Used by /usr/local/bin/aegir-weekly.
+ */
+function drush_provision_symbiotic_cleanup() {
+  // Find usage stats before cleanup
+  $before = _provision_symbiotic_get_db_stats();
+  drush_log('TOTAL Disk usage [before]: ' . $before['total']['disk_used'] . ' MB, reversed space: ' . $before['total']['disk_free'] . ' MB', 'ok');
+
+  // Start by deleting potentially large log tables
+  if (provision_symbiotic_civicrm_init()) {
+    // Keep only 14 days.
+    // https://github.com/lcdservices/biz.lcdservices.joblogmanagement/blob/master/api/v3/JobLog/Purge.php
+    CRM_Core_DAO::executeQuery('DELETE FROM civicrm_job_log WHERE run_time < (NOW() - INTERVAL 14 DAY)');
+  }
+
+  // Optimize fragmented tables
+  foreach ($before['tables'] as $key => $stat) {
+    drush_log('Fragmented table [before]: ' . $key . ': ' . $stat['disk_used'] . ' MB, reversed space: ' . $stat['disk_free'] . ' MB', 'warning');
+    db_query('OPTIMIZE table ' . $key);
+  }
+
+  // Show stats after
+  $after = _provision_symbiotic_get_db_stats();
+  drush_log('TOTAL Disk usage [after]: ' . $after['total']['disk_used'] . ' MB, reversed space: ' . $after['total']['disk_free'] . ' MB', 'ok');
+
+  foreach ($after['tables'] as $key => $stat) {
+    drush_log('Fragmented table [after]: ' . $key . ': ' . $stat['disk_used'] . ' MB, reversed space: ' . $stat['disk_free'] . ' MB', 'warning');
+  }
+
+  // @todo Consider truncating specific cache tables
+  // but doing so cause problems on sites. Maybe sometimes, if they get over a certain size?
+  // - civicrm_cache
+  // - watchdog
+  // - form_cache
+  // - sessions
+
+  // @todo And then more complicated tables, maybe should use CiviCRM extensions instead
+  // - civicrm_mailing_event_queue
+  // - civicrm_log
+  // - civicrm_activity (remove HTML from old messages)
+}
+
+function _provision_symbiotic_get_db_stats() {
+  $stats = [];
+
+  // @todo How to handle WordPress?
+  if (!function_exists('db_query')) {
+    return $stats;
+  }
+
+  $result = db_query("SELECT
+    round(sum(data_length + index_length)/1024/1024, 2) disk_used,
+    round(sum(data_free)/ 1024 / 1024, 2) disk_free
+    FROM `information_schema`.`TABLES`
+    WHERE `TABLE_SCHEMA` <> 'information_schema'");
+
+  $record = $result->fetchObject();
+
+  $stats['total'] = [
+    'disk_used' => $record->disk_used,
+    'disk_free' => $record->disk_free,
+  ];
+
+  // Fragmented tables
+  $stats['tables'] = [];
+
+  $result = db_query("SELECT table_schema as db_name, table_name,
+    round(sum(data_length + index_length)/1024/1024, 2) disk_used,
+    round(sum(data_free)/ 1024 / 1024, 2) disk_free
+    FROM `information_schema`.`TABLES`
+    WHERE TABLE_SCHEMA <> 'information_schema'
+    GROUP BY table_schema, table_name
+    HAVING SUM(data_free) > 0 ORDER BY data_free DESC");
+
+  foreach ($result as $record) {
+    $stats['tables'][$record->db_name . '.' . $record->table_name] = [
+      'disk_used' => $record->disk_used,
+      'disk_free' => $record->disk_free,
+    ];
+  }
+
+  return $stats;
 }
 
 /**
