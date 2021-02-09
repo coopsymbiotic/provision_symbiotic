@@ -354,7 +354,11 @@ function _provision_symbiotic_last_login() {
 
   // @todo Drupal8, WordPress?
   try {
-    $last = $db->query('SELECT date(from_unixtime(access)) as t from users where uid != 1 order by access desc limit 1')->fetch_assoc()['t'];
+    $result = $db->query('SELECT date(from_unixtime(access)) as t from users where uid != 1 order by access desc limit 1');
+    if ($result) {
+      $record = $result->fetch_assoc();
+      return $record['t'];
+    }
     return $last;
   }
   catch (Exception $e) {
