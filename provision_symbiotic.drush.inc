@@ -200,6 +200,11 @@ function provision_symbiotic_civicrm_init() {
  */
 function provision_symbiotic_db_connect() {
   global $options;
+
+  if (empty($options['db_host'])) {
+    require_once d()->site_path . '/drushrc.php';
+  }
+
   $db = new mysqli($options['db_host'], $options['db_user'], $options['db_passwd'], $options['db_name']);
   return $db;
 }
