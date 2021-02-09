@@ -280,26 +280,21 @@ function drush_provision_symbiotic_civicrm_stats() {
   $processors = _provision_symbiotic_get_payment_processors();
   echo implode('+', $processors) . ',';
 
-  // Detect if Drupal or WordPress, because the following only work on Drupal
-  // @todo Implement by quering the database directly?
-  global $options;
-
-  if (!empty($options['wp_content_url'])) {
-    echo ",";
-    return;
-  }
-
   // Fetch the available languages
-  drush_bootstrap(DRUSH_BOOTSTRAP_DRUPAL_FULL);
-  $languages = CRM_Core_I18n::languages(true);
+  // Depending on if multilingual or not, one of these should be valid
+  $result = $db->query("SELECT value FROM civicrm_setting WHERE name IN ('uiLanguages','languageLimit') and value is not null");
 
-  if (!empty($languages)) {
-    echo implode('+', array_keys($languages)) . ',';
+  if ($result) {
+    $record = $result->fetch_assoc();
+
+    if ($record['value']) {
+      $langs = unserialize($record['value']);
+      $languages = implode('+', array_keys($langs));
+      echo $languages;
+    }
   }
-  else {
-    $language = CRM_Core_I18n::getLocale();
-    echo $language . ',';
-  }
+
+  echo ',';
 
   // Fetch the last login
   $last = _provision_symbiotic_last_login();
@@ -351,21 +346,18 @@ function drush_provision_symbiotic_last_login() {
 }
 
 function _provision_symbiotic_last_login() {
-  if (!provision_symbiotic_civicrm_init()) {
-    return null;
+  $db = provision_symbiotic_db_connect();
+
+  if ($db->connect_errno) {
+    return $stats;
   }
 
-  $config = CRM_Core_Config::singleton();
-
-  if ($config->userFramework == 'Drupal') {
-    $last = db_query('SELECT date(from_unixtime(access)) as t from {users} where uid != 1 order by access desc limit 1')->fetchField();
+  // @todo Drupal8, WordPress?
+  try {
+    $last = $db->query('SELECT date(from_unixtime(access)) as t from users where uid != 1 order by access desc limit 1')->fetch_assoc()['t'];
     return $last;
   }
-  elseif ($config->userFramework == 'Drupal8') {
-    // TODO
-    return null;
-  }
-  elseif ($config->userFramework == 'WordPress') {
+  catch (Exception $e) {
     // TODO
     return null;
   }
