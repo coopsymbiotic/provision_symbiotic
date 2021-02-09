@@ -27,6 +27,7 @@ function provision_symbiotic_drush_command() {
     ],
   );
   $items['provision-symbiotic-civicrm-stats'] = array(
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
     'description' => 'Returns the total number of CiviCRM contacts, activities, contributions, memberships, mailings, cases, events and participants',
   );
   $items['provision-symbiotic-last-login'] = array(
@@ -34,6 +35,7 @@ function provision_symbiotic_drush_command() {
   );
   $items['provision-symbiotic-cleanup'] = array(
     'description' => 'Runs database and potentially other cleanup operations (called from aegir-weekly).',
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
   );
   $items['provision-symbiotic-hostmaster-enable-https'] = array(
     'description' => 'Enables https for the Aegir hostmaster.',
@@ -193,6 +195,16 @@ function provision_symbiotic_civicrm_init() {
 }
 
 /**
+ * Connects to the database using MySQLi from PHP, not the DB later from the CMS.
+ * Used to simplify code shared on WordPress and Drupal(s).
+ */
+function provision_symbiotic_db_connect() {
+  global $options;
+  $db = new mysqli($options['db_host'], $options['db_user'], $options['db_passwd'], $options['db_name']);
+  return $db;
+}
+
+/**
  * Callback for provision-symbiotic-hush-alerts
  *
  * Hush CiviCRM alerts.
@@ -235,26 +247,45 @@ function drush_provision_symbiotic_role_permission($rid, $permission) {
  * memberships, mailings, cases, events and event participants.
  */
 function drush_provision_symbiotic_civicrm_stats() {
-  if (!provision_symbiotic_civicrm_init()) {
+  $db = provision_symbiotic_db_connect();
+
+  if ($db->connect_errno) {
     echo "0,0,0,0,0,0";
     return;
   }
 
-  echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_contact WHERE is_deleted = 0') . ',';
-  echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_activity WHERE is_test = 0 AND is_deleted = 0 AND is_current_revision = 1') . ',';
-  echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_contribution WHERE is_test = 0') . ',';
-  echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_membership WHERE is_test = 0') . ',';
-  echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_mailing WHERE is_completed=1 AND sms_provider_id IS NULL') . ',';
-  echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_mailing WHERE is_completed=1 AND sms_provider_id IS NOT NULL') . ',';
-  echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_case WHERE is_deleted = 0') . ',';
-  echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_event') . ',';
-  echo CRM_Core_DAO::singleValueQuery('SELECT count(*) FROM civicrm_participant WHERE is_test = 0') . ',';
+  try {
+    echo $db->query('SELECT count(*) as x FROM civicrm_contact WHERE is_deleted = 0')->fetch_assoc()['x'] . ',';
+    echo $db->query('SELECT count(*) as x FROM civicrm_activity WHERE is_test = 0 AND is_deleted = 0 AND is_current_revision = 1')->fetch_assoc()['x'] . ',';
+    echo $db->query('SELECT count(*) as x FROM civicrm_contribution WHERE is_test = 0')->fetch_assoc()['x'] . ',';
+    echo $db->query('SELECT count(*) as x FROM civicrm_membership WHERE is_test = 0')->fetch_assoc()['x'] . ',';
+    echo $db->query('SELECT count(*) as x FROM civicrm_mailing WHERE is_completed=1 AND sms_provider_id IS NULL')->fetch_assoc()['x'] . ',';
+    echo $db->query('SELECT count(*) as x FROM civicrm_mailing WHERE is_completed=1 AND sms_provider_id IS NOT NULL')->fetch_assoc()['x'] . ',';
+    echo $db->query('SELECT count(*) as x FROM civicrm_case WHERE is_deleted = 0')->fetch_assoc()['x'] . ',';
+    echo $db->query('SELECT count(*) as x FROM civicrm_event')->fetch_assoc()['x'] . ',';
+    echo $db->query('SELECT count(*) as x FROM civicrm_participant WHERE is_test = 0')->fetch_assoc()['x'] . ',';
+  }
+  catch (Exception $e) {
+    // Probably not a CiviCRM site
+    echo "0,0,0,0,0,0";
+    return;
+  }
 
   // Fetch the payment processors used
   $processors = _provision_symbiotic_get_payment_processors();
   echo implode('+', $processors) . ',';
 
+  // Detect if Drupal or WordPress, because the following only work on Drupal
+  // @todo Implement by quering the database directly?
+  global $options;
+
+  if (!empty($options['wp_content_url'])) {
+    echo ",";
+    return;
+  }
+
   // Fetch the available languages
+  drush_bootstrap(DRUSH_BOOTSTRAP_DRUPAL_FULL);
   $languages = CRM_Core_I18n::languages(true);
 
   if (!empty($languages)) {
@@ -348,17 +379,23 @@ function drush_provision_symbiotic_cleanup() {
   $before = _provision_symbiotic_get_db_stats();
   drush_log('TOTAL Disk usage [before]: ' . $before['total']['disk_used'] . ' MB, reserved space: ' . $before['total']['disk_free'] . ' MB', 'ok');
 
+  $db = provision_symbiotic_db_connect();
+
+  if ($db->connect_errno) {
+    return $stats;
+  }
+
   // Start by deleting potentially large log tables
   if (provision_symbiotic_civicrm_init()) {
     // Keep only 14 days.
     // https://github.com/lcdservices/biz.lcdservices.joblogmanagement/blob/master/api/v3/JobLog/Purge.php
-    CRM_Core_DAO::executeQuery('DELETE FROM civicrm_job_log WHERE run_time < (NOW() - INTERVAL 14 DAY)');
+    $db->query('DELETE FROM civicrm_job_log WHERE run_time < (NOW() - INTERVAL 14 DAY)');
   }
 
   // Optimize fragmented tables
   foreach ($before['tables'] as $key => $stat) {
     drush_log('Fragmented table [before]: ' . $key . ': ' . $stat['disk_used'] . ' MB, reserved space: ' . $stat['disk_free'] . ' MB', 'warning');
-    db_query('OPTIMIZE table ' . $key);
+    $db->query('OPTIMIZE table ' . $key);
   }
 
   // Show stats after
@@ -383,20 +420,24 @@ function drush_provision_symbiotic_cleanup() {
 }
 
 function _provision_symbiotic_get_db_stats() {
-  $stats = [];
+  $stats = [
+    'tables' => [],
+    'total' => [],
+  ];
 
-  // @todo How to handle WordPress?
-  if (!function_exists('db_query')) {
+  $db = provision_symbiotic_db_connect();
+
+  if ($db->connect_errno) {
     return $stats;
   }
 
-  $result = db_query("SELECT
+  $result = $db->query("SELECT
     round(sum(data_length + index_length)/1024/1024, 2) disk_used,
     round(sum(data_free)/ 1024 / 1024, 2) disk_free
     FROM `information_schema`.`TABLES`
     WHERE `TABLE_SCHEMA` <> 'information_schema'");
 
-  $record = $result->fetchObject();
+  $record = $result->fetch_object();
 
   $stats['total'] = [
     'disk_used' => $record->disk_used,
@@ -404,9 +445,7 @@ function _provision_symbiotic_get_db_stats() {
   ];
 
   // Fragmented tables
-  $stats['tables'] = [];
-
-  $result = db_query("SELECT table_schema as db_name, table_name,
+  $result = $db->query("SELECT table_schema as db_name, table_name,
     round(sum(data_length + index_length)/1024/1024, 2) disk_used,
     round(sum(data_free)/ 1024 / 1024, 2) disk_free
     FROM `information_schema`.`TABLES`
@@ -414,7 +453,7 @@ function _provision_symbiotic_get_db_stats() {
     GROUP BY table_schema, table_name
     HAVING SUM(data_free) > 0 ORDER BY data_free DESC");
 
-  foreach ($result as $record) {
+  while ($record = $result->fetch_object()) {
     $stats['tables'][$record->db_name . '.' . $record->table_name] = [
       'disk_used' => $record->disk_used,
       'disk_free' => $record->disk_free,
@@ -428,26 +467,17 @@ function _provision_symbiotic_get_db_stats() {
  * Helper function that returns the list of payment processors enabled.
  */
 function _provision_symbiotic_get_payment_processors() {
-  if (!provision_symbiotic_civicrm_init()) {
+  $db = provision_symbiotic_db_connect();
+
+  if ($db->connect_errno) {
     return null;
   }
 
   $processors = [];
+  $result = $db->query("select class_name from civicrm_payment_processor where is_active = 1 and is_test = 0 and class_name != 'Payment_Dummy'");
 
-  $result = civicrm_api3('PaymentProcessor', 'get', [
-    'is_active' => 1,
-    'is_test' => 0,
-    'api.PaymentProcessorType.get' => [],
-  ]);
-
-  foreach ($result['values'] as $key => $val) {
-    $type = $val['api.PaymentProcessorType.get']['values'][0]['name'];
-
-    if ($type == 'Dummy') {
-      continue;
-    }
-
-    $processors[] = $type;
+  while ($record = $result->fetch_assoc()) {
+    $processors[] = $record['class_name'];
   }
 
   return $processors;
