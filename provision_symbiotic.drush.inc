@@ -9,7 +9,11 @@ function provision_symbiotic_drush_command() {
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
   );
   $items['provision-symbiotic-hush-alerts'] = array(
-    'description' => 'Hide CiviCRM Status Alerts.',
+    'description' => 'Hide active CiviCRM Status Alerts.',
+    'options' => [
+      'severity' => 'The severity of active alerts to ignore. Ex: info, warning, critical. Defaults to warning.',
+    ],
+    'aliases' => ['civihush'],
   );
   $items['provision-symbiotic-role-permission'] = array(
     'description' => 'Add a permission to a role.',
@@ -197,17 +201,22 @@ function provision_symbiotic_civicrm_init() {
  *
  * Hush CiviCRM alerts.
  */
-function drush_provision_symbiotic_hush_alerts() {
+function drush_provision_symbiotic_hush_alerts($severity = 'warning') {
   if (!provision_symbiotic_civicrm_init()) {
     return;
   }
 
-  $hush = ['checkDirVariables', 'checkUrlVariables', 'checkPhpVersion', 'checkVersion', 'checkDirsWritable', 'checkIndices', 'checkPriceFields', 'extensionUpdates'];
+  // The function param does not seem to work, perhaps because it's an old drush version
+  if ($option = drush_get_option('severity')) {
+    $severity = $option;
+  }
+
+  $hush = ['checkDirVariables', 'checkUrlVariables', 'checkPhpVersion', 'checkVersion', 'checkDirsWritable', 'checkIndices', 'checkPriceFields', 'extensionUpdates', 'checkVersion_upgrade'];
 
   foreach ($hush as $h) {
     civicrm_api3('StatusPreference', 'create', [
       'name' => $h,
-      'ignore_severity' => 'warning',
+      'ignore_severity' => $severity,
       'hush_until' => '',
     ]);
   }
