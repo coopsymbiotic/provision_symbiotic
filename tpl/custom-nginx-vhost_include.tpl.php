@@ -89,7 +89,10 @@ if ( $rce = "AB" ) {
 }
 
 <?php if ($nginx_config_mode == 'extended'): ?>
-set $nocache_details "Cache";
+# coopsymbiotic/ops#169
+# This ends up causing problems with other Skip/Bypass clauses
+# but seems to work fine if we omit it.
+# set $nocache_details "Cache";
 
 <?php if ($satellite_mode == 'boa'): ?>
 ###
