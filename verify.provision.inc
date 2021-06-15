@@ -361,7 +361,7 @@ function _provision_symbiotic_disable_jobs_on_devsites() {
   // - *.symbiodev.xyz (SymbioTIC)
   // - *.crm-dev.* (Jvillage)
   // - *.www-test.* (CiviCRM.org)
-  // - dlr-test* (Makoa)
+  // - *test*makoa.net (Makoa)
   // - test*-dms (CH)
   $is_dev = FALSE;
 
@@ -377,7 +377,7 @@ function _provision_symbiotic_disable_jobs_on_devsites() {
   if (preg_match('/\.www-test\./', d()->uri)) {
     $is_dev = TRUE;
   }
-  if (preg_match('/^dlr-test/', d()->uri)) {
+  if (preg_match('/test.*makoa.net/', d()->uri)) {
     $is_dev = TRUE;
   }
   if (preg_match('/test.*-dms/', d()->uri)) {
