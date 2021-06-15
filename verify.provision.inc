@@ -361,6 +361,7 @@ function _provision_symbiotic_disable_jobs_on_devsites() {
   // - *.symbiodev.xyz (SymbioTIC)
   // - *.crm-dev.* (Jvillage)
   // - *.www-test.* (CiviCRM.org)
+  // - dlr-test* (Makoa)
   $is_dev = FALSE;
 
   if (preg_match('/^crm-dev\./', d()->uri)) {
@@ -373,6 +374,9 @@ function _provision_symbiotic_disable_jobs_on_devsites() {
     $is_dev = TRUE;
   }
   if (preg_match('/\.www-test\./', d()->uri)) {
+    $is_dev = TRUE;
+  }
+  if (preg_match('/^dlr-test/', d()->uri)) {
     $is_dev = TRUE;
   }
 
