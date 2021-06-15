@@ -41,6 +41,13 @@ while (!empty($domain_parts)) {
 
   array_shift($domain_parts);
 }
+
+// Support for custom certs from another cert authority
+if (file_exists("/var/aegir/config/letsencrypt.d/{$this->uri}.override/privkey.pem")) {
+  drush_log(dt("Provision Symbiotic: Found cert override"), 'ok');
+  $https_key_name = "{$this->uri}.override";
+}
+
 ?>
 
 <?php if ($this->redirection): ?>
