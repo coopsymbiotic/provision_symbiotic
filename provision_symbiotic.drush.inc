@@ -228,7 +228,7 @@ function drush_provision_symbiotic_hush_alerts($severity = 'warning') {
     $severity = $option;
   }
 
-  $hush = ['checkDirVariables', 'checkUrlVariables', 'checkPhpVersion', 'checkVersion', 'checkDirsWritable', 'checkIndices', 'checkPriceFields', 'extensionUpdates', 'checkVersion_upgrade'];
+  $hush = ['checkDirVariables', 'checkUrlVariables', 'checkPhpVersion', 'checkVersion', 'checkDirsWritable', 'checkIndices', 'checkPriceFields', 'extensionUpdates', 'checkVersion_upgrade', 'checkExtensionsUpdates'];
 
   foreach ($hush as $h) {
     civicrm_api3('StatusPreference', 'create', [
