@@ -351,7 +351,7 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
  * Detects whether the URI pattern is for a dev site.
  * This is also used by hosting_civicrm_ansible for the icinga monitoring.
  */
-function _provision_symbiotic_is_dev_site($uri) {
+function provision_symbiotic_is_dev_site($uri) {
   // Match against dev patterns:
   // - crm-dev.* (SymbioTIC)
   // - *.symbiodev.xyz (SymbioTIC)
@@ -391,7 +391,7 @@ function _provision_symbiotic_is_dev_site($uri) {
  */
 function _provision_symbiotic_disable_jobs_on_devsites() {
   $uri = d()->uri;
-  if (!_provision_symbiotic_is_dev_site($uri)) {
+  if (!provision_symbiotic_is_dev_site($uri)) {
     return;
   }
 
