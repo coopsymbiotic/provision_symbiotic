@@ -348,6 +348,40 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
 }
 
 /**
+ * Detects whether the URI pattern is for a dev site.
+ * This is also used by hosting_civicrm_ansible for the icinga monitoring.
+ */
+function _provision_symbiotic_is_dev_site($uri) {
+  // Match against dev patterns:
+  // - crm-dev.* (SymbioTIC)
+  // - *.symbiodev.xyz (SymbioTIC)
+  // - *.crm-dev.* (legacy)
+  // - *.www-test.* (CiviCRM.org)
+  // - *test*makoa.net (Makoa)
+  // - test*-dms (CH)
+  if (preg_match('/^crm-dev\./', d()->uri)) {
+    return TRUE;
+  }
+  if (preg_match('/symbiodev.xyz/', d()->uri)) {
+    return TRUE;
+  }
+  if (preg_match('/\.crm-dev\./', d()->uri)) {
+    return TRUE;
+  }
+  if (preg_match('/\.www-test\./', d()->uri)) {
+    return TRUE;
+  }
+  if (preg_match('/test.*makoa.net/', d()->uri)) {
+    return TRUE;
+  }
+  if (preg_match('/test.*-dms/', d()->uri)) {
+    return TRUE;
+  }
+
+  return FALSE;
+}
+
+/**
  * Automatically sets Environment=Development and disables iATS logins on dev sites.
  *
  * NB: we disable by changing the login, since the iATS recurring Scheduled Job
@@ -356,35 +390,8 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
  * this just in case someone accidentally changes the environment back to 'production'.
  */
 function _provision_symbiotic_disable_jobs_on_devsites() {
-  // Match against dev patterns:
-  // - crm-dev.* (SymbioTIC)
-  // - *.symbiodev.xyz (SymbioTIC)
-  // - *.crm-dev.* (Jvillage)
-  // - *.www-test.* (CiviCRM.org)
-  // - *test*makoa.net (Makoa)
-  // - test*-dms (CH)
-  $is_dev = FALSE;
-
-  if (preg_match('/^crm-dev\./', d()->uri)) {
-    $is_dev = TRUE;
-  }
-  if (preg_match('/symbiodev.xyz/', d()->uri)) {
-    $is_dev = TRUE;
-  }
-  if (preg_match('/\.crm-dev\./', d()->uri)) {
-    $is_dev = TRUE;
-  }
-  if (preg_match('/\.www-test\./', d()->uri)) {
-    $is_dev = TRUE;
-  }
-  if (preg_match('/test.*makoa.net/', d()->uri)) {
-    $is_dev = TRUE;
-  }
-  if (preg_match('/test.*-dms/', d()->uri)) {
-    $is_dev = TRUE;
-  }
-
-  if (!$is_dev) {
+  $uri = d()->uri;
+  if (!_provision_symbiotic_is_dev_site($uri)) {
     return;
   }
 
