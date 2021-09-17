@@ -234,27 +234,6 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
       return;
     }
 
-    // Migrate to CiviCRM settings instead of Drupal variables
-    if (drush_drupal_major_version() == 7) {
-      $migrate = [
-        'hosting_restapi_initial_done',
-        'hosting_restapi_token',
-        'hosting_restapi_hostmaster',
-      ];
-
-      foreach ($migrate as $setting) {
-        $val = Civi::settings()->get($setting);
-
-        if (!$val) {
-          $val = variable_get($setting);
-
-          if ($val) {
-            Civi::settings()->set($setting, $val);
-          }
-        }
-      }
-    }
-
     if (!Civi::settings()->get('hosting_restapi_token')) {
       Civi::settings()->set('hosting_restapi_token', d()->hosting_restapi_token);
       Civi::settings()->set('hosting_restapi_hostmaster', d()->hosting_restapi_hostmaster);
