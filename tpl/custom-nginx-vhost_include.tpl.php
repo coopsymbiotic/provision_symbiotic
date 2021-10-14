@@ -126,7 +126,7 @@ include /data/conf/nginx_high_load.c*;
 ###
 ### Deny not compatible request methods without 405 response.
 ###
-if ( $request_method !~ ^(?:GET|HEAD|POST|PUT|DELETE|OPTIONS)$ ) {
+if ( $request_method !~ ^(?:GET|HEAD|POST|PUT|DELETE|OPTIONS|PATCH)$ ) {
   return 403;
 }
 
