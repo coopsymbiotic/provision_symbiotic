@@ -594,3 +594,37 @@ function drush_provision_symbiotic_delete_stripe_webhooks() {
     }
   }
 }
+
+/**
+ * Detects whether the URI pattern is for a dev site.
+ * This is also used by hosting_civicrm_ansible for the icinga monitoring.
+ */
+function provision_symbiotic_is_dev_site($uri) {
+  // Match against dev patterns:
+  // - crm-dev.* (SymbioTIC)
+  // - *.symbiodev.xyz (SymbioTIC)
+  // - *.crm-dev.* (legacy)
+  // - *.www-test.* (CiviCRM.org)
+  // - *test*makoa.net (Makoa)
+  // - test*-dms (CH)
+  if (preg_match('/^crm-dev\./', $uri)) {
+    return TRUE;
+  }
+  if (preg_match('/symbiodev.xyz/', $uri)) {
+    return TRUE;
+  }
+  if (preg_match('/\.crm-dev\./', $uri)) {
+    return TRUE;
+  }
+  if (preg_match('/\.www-test\./', $uri)) {
+    return TRUE;
+  }
+  if (preg_match('/test.*makoa.net/', $uri)) {
+    return TRUE;
+  }
+  if (preg_match('/test.*-dms/', $uri)) {
+    return TRUE;
+  }
+
+  return FALSE;
+}

@@ -238,27 +238,6 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
       return;
     }
 
-    // Migrate to CiviCRM settings instead of Drupal variables
-    if (drush_drupal_major_version() == 7) {
-      $migrate = [
-        'hosting_restapi_initial_done',
-        'hosting_restapi_token',
-        'hosting_restapi_hostmaster',
-      ];
-
-      foreach ($migrate as $setting) {
-        $val = Civi::settings()->get($setting);
-
-        if (!$val) {
-          $val = variable_get($setting);
-
-          if ($val) {
-            Civi::settings()->set($setting, $val);
-          }
-        }
-      }
-    }
-
     if (!Civi::settings()->get('hosting_restapi_token')) {
       Civi::settings()->set('hosting_restapi_token', d()->hosting_restapi_token);
       Civi::settings()->set('hosting_restapi_hostmaster', d()->hosting_restapi_hostmaster);
@@ -360,35 +339,8 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
  * this just in case someone accidentally changes the environment back to 'production'.
  */
 function _provision_symbiotic_disable_jobs_on_devsites() {
-  // Match against dev patterns:
-  // - crm-dev.* (SymbioTIC)
-  // - *.symbiodev.xyz (SymbioTIC)
-  // - *.crm-dev.* (Jvillage)
-  // - *.www-test.* (CiviCRM.org)
-  // - *test*makoa.net (Makoa)
-  // - test*-dms (CH)
-  $is_dev = FALSE;
-
-  if (preg_match('/^crm-dev\./', d()->uri)) {
-    $is_dev = TRUE;
-  }
-  if (preg_match('/symbiodev.xyz/', d()->uri)) {
-    $is_dev = TRUE;
-  }
-  if (preg_match('/\.crm-dev\./', d()->uri)) {
-    $is_dev = TRUE;
-  }
-  if (preg_match('/\.www-test\./', d()->uri)) {
-    $is_dev = TRUE;
-  }
-  if (preg_match('/test.*makoa.net/', d()->uri)) {
-    $is_dev = TRUE;
-  }
-  if (preg_match('/test.*-dms/', d()->uri)) {
-    $is_dev = TRUE;
-  }
-
-  if (!$is_dev) {
+  $uri = d()->uri;
+  if (!provision_symbiotic_is_dev_site($uri)) {
     return;
   }
 
