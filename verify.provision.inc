@@ -175,8 +175,17 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
       Civi::settings()->set('userFrameworkResourceURL', $url);
     }
 
-    Civi::settings()->set('uploadDir', "$root/sites/$host/files/civicrm/upload/");
-    Civi::settings()->set('customFileUploadDir', "$root/sites/$host/files/civicrm/custom/");
+    // Only update the Directory settings if not using relative paths
+    $uploadDir = Civi::settings()->get('uploadDir');
+    $customFileUploadDir = Civi::settings()->get('customFileUploadDir');
+
+    if (strpos($uploadDir, '[civicrm.files]') === FALSE) {
+      Civi::settings()->set('uploadDir', "$root/sites/$host/files/civicrm/upload/");
+    }
+
+    if (strpos($customFileUploadDir, '[civicrm.files]') === FALSE) {
+      Civi::settings()->set('customFileUploadDir', "$root/sites/$host/files/civicrm/custom/");
+    }
 
     Civi::settings()->set('customPHPPathDir', NULL);
     Civi::settings()->set('customTemplateDir', NULL);
