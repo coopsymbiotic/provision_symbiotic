@@ -182,38 +182,42 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
     Civi::settings()->set('customTemplateDir', NULL);
 
     $extensions_suffix = NULL;
+    $extensionDir = Civi::settings()->get('extensionsDir');
 
-    if (preg_match('/civi-go.net$/', $host)) {
-      // iXiam default
-      $extensions_suffix = 'files/civicrm/ext';
-    }
-    elseif (file_exists("$root/sites/$host/modules/extensions/")) {
+    // Only update the extensionsDir if not using relative paths
+    if (strpos($extensionsDir, '[civicrm.files]') === FALSE) {
+      if (preg_match('/civi-go.net$/', $host)) {
+        // iXiam default
+        $extensions_suffix = 'files/civicrm/ext';
+      }
+      elseif (file_exists("$root/sites/$host/modules/extensions/")) {
+        // Symbiotic default
+        $extensions_suffix = 'modules/extensions';
+      }
+      elseif (file_exists("$root/sites/$host/modules/civi-extensions/")) {
+        // Legacy Symbiotic
+        $extensions_suffix = 'modules/civi-extensions';
+      }
+      elseif (file_exists("$root/sites/$host/civiext/")) {
+        // civicrm.org
+        $extensions_suffix = 'civiext';
+      }
+      elseif (file_exists("$root/sites/$host/files/civicrm/extensions/")) {
+        $extensions_suffix = 'files/civicrm/extensions';
+      }
+      elseif (file_exists("$root/sites/$host/files/civicrm/ext/")) {
+        // CiviCRM default
+        $extensions_suffix = 'files/civicrm/ext';
+      }
+
       // Symbiotic default
-      $extensions_suffix = 'modules/extensions';
-    }
-    elseif (file_exists("$root/sites/$host/modules/civi-extensions/")) {
-      // Legacy Symbiotic
-      $extensions_suffix = 'modules/civi-extensions';
-    }
-    elseif (file_exists("$root/sites/$host/civiext/")) {
-      // civicrm.org
-      $extensions_suffix = 'civiext';
-    }
-    elseif (file_exists("$root/sites/$host/files/civicrm/extensions/")) {
-      $extensions_suffix = 'files/civicrm/extensions';
-    }
-    elseif (file_exists("$root/sites/$host/files/civicrm/ext/")) {
-      // CiviCRM default
-      $extensions_suffix = 'files/civicrm/ext';
-    }
+      if (!$extensions_suffix) {
+        $extensions_suffix = 'modules/extensions';
+      }
 
-    // Symbiotic default
-    if (!$extensions_suffix) {
-      $extensions_suffix = 'modules/extensions';
+      Civi::settings()->set('extensionsDir', "$root/sites/$host/$extensions_suffix/");
+      Civi::settings()->set('extensionsURL', "https://$host/sites/$host/$extensions_suffix");
     }
-
-    Civi::settings()->set('extensionsDir', "$root/sites/$host/$extensions_suffix/");
-    Civi::settings()->set('extensionsURL', "https://$host/sites/$host/$extensions_suffix");
 
     Civi::settings()->set('imageUploadDir', "$root/sites/$host/files/civicrm/persist/contribute");
     Civi::settings()->set('imageUploadURL', "https://$host/sites/$host/files/civicrm/persist/contribute");
