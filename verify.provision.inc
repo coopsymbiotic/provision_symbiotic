@@ -180,15 +180,19 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
     }
 
     // Only update the Directory settings if not using relative paths
-    $uploadDir = Civi::settings()->get('uploadDir');
-    $customFileUploadDir = Civi::settings()->get('customFileUploadDir');
+    $settings = [
+      'uploadDir' => "$root/sites/$host/files/civicrm/upload",
+      'customFileUploadDir' => "$root/sites/$host/files/civicrm/custom",
+      'imageUploadDir' => "$root/sites/$host/files/civicrm/persist/contribute",
+      'imageUploadURL' => ""https://$host/sites/$host/files/civicrm/persist/contribute",
+    ];
 
-    if (strpos($uploadDir, '[civicrm.files]') === FALSE) {
-      Civi::settings()->set('uploadDir', "$root/sites/$host/files/civicrm/upload/");
-    }
+    foreach ($settings as $setting => $default) {
+      $oldval = Civi::settings()->get($setting);
 
-    if (strpos($customFileUploadDir, '[civicrm.files]') === FALSE) {
-      Civi::settings()->set('customFileUploadDir', "$root/sites/$host/files/civicrm/custom/");
+      if (strpos($oldval, '[civicrm.files]') === FALSE) {
+        Civi::settings()->set($setting, $default);
+      }
     }
 
     Civi::settings()->set('customPHPPathDir', NULL);
@@ -231,9 +235,6 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
       Civi::settings()->set('extensionsDir', "$root/sites/$host/$extensions_suffix/");
       Civi::settings()->set('extensionsURL', "https://$host/sites/$host/$extensions_suffix");
     }
-
-    Civi::settings()->set('imageUploadDir', "$root/sites/$host/files/civicrm/persist/contribute");
-    Civi::settings()->set('imageUploadURL', "https://$host/sites/$host/files/civicrm/persist/contribute");
 
     _provision_symbiotic_disable_jobs_on_devsites();
 
