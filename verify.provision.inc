@@ -164,6 +164,10 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
     if (drush_drupal_major_version() == 8) {
       Civi::settings()->set('userFrameworkResourceURL', "https://$host/vendor/civicrm/civicrm-core");
     }
+    elseif (drush_drupal_major_version() == 9) {
+      // Do nothing for now, it should be set automatically by CiviCRM to something like:
+      // Civi::settings()->set('userFrameworkResourceURL', "[civicrm.root]");
+    }
     else {
       // CiviCRM might be in sites/all/modules or in the profile directory.
       $module = _provision_civicrm_get_package_info();
