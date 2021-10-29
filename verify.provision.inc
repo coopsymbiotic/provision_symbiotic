@@ -184,7 +184,7 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
       'uploadDir' => "$root/sites/$host/files/civicrm/upload",
       'customFileUploadDir' => "$root/sites/$host/files/civicrm/custom",
       'imageUploadDir' => "$root/sites/$host/files/civicrm/persist/contribute",
-      'imageUploadURL' => ""https://$host/sites/$host/files/civicrm/persist/contribute",
+      'imageUploadURL' => "https://$host/sites/$host/files/civicrm/persist/contribute",
     ];
 
     foreach ($settings as $setting => $default) {
