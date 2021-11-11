@@ -329,6 +329,26 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
     }
 
     Civi::settings()->set('hosting_restapi_initial_done', 1);
+
+    // Get a one-time link (Drupal7)
+    $account = user_load(2);
+
+    if (!empty($account)) {
+      $onetime = user_pass_reset_url($account) . '/login';
+      $onetime = preg_replace('/http:/', 'https:', $onetime);
+
+      $result = drupal_http_request($hostmaster . '/hosting/api/site/welcome', [
+        'method' => 'POST',
+        'data' => [
+          'url' => d()->uri,
+          'token' => $token,
+          'loginurl' => $onetime,
+        ],
+        'headers' => ['Content-Type' => 'application/x-www-form-urlencoded'],
+      ]);
+
+      drush_log('Symbiotic: sending welcome one-time link: ' . $onetime . ' via ' . $hostmaster . ' == ' . print_r($result, 1), 'ok');
+    }
   }
   elseif (d()->type === 'server') {
     // Based on provision/platform/verify.provision.inc (pre provision verify)
