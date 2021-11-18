@@ -522,6 +522,13 @@ location ~* ^/sites/.*/files/civicrm/(?:ConfigAndLog|custom|upload|templates_c) 
   return 404;
 }
 
+###
+### Deny listed requests for security-by-obscurity reasons.
+###
+location = /CHANGELOG.txt {
+  return 404;
+}
+
 <?php if ($nginx_config_mode == 'extended'): ?>
 ###
 ### Deny often flooded URI for performance reasons
