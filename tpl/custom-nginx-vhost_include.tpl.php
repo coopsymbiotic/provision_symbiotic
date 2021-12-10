@@ -126,7 +126,7 @@ include /data/conf/nginx_high_load.c*;
 ###
 ### Deny not compatible request methods without 405 response.
 ###
-if ( $request_method !~ ^(?:GET|HEAD|POST|PUT|DELETE|OPTIONS)$ ) {
+if ( $request_method !~ ^(?:GET|HEAD|POST|PUT|DELETE|OPTIONS|PATCH)$ ) {
   return 403;
 }
 
@@ -501,7 +501,7 @@ location ^~ /audio/download {
 ###
 ### Deny listed requests for security reasons.
 ###
-location ~* (\.(?:git.*|htaccess|engine|config|inc|ini|info|install|make|module|profile|test|pl|po|sh|.*sql|theme|tpl(\.php)?|xtmpl)(~|\.sw[op]|\.bak|\.orig|\.save)?$|^(\..*|Entries.*|Repository|Root|Tag|Template|composer\.(json|lock))$|^#.*#$|\.php(~|\.sw[op]|\.bak|\.orig\.save))$ {
+location ~* (\.(?:git.*|htaccess|engine|config|inc|ini|info|install|make|module|profile|test|pl|po|sh|.*sql|theme|tpl(\.php)?|xtmpl|pem|crt)(~|\.sw[op]|\.bak|\.orig|\.save)?$|^(\..*|Entries.*|Repository|Root|Tag|Template|composer\.(json|lock))$|^#.*#$|\.php(~|\.sw[op]|\.bak|\.orig\.save))$ {
   access_log off;
   return 404;
 }
@@ -519,6 +519,13 @@ location ~* /(?:modules|themes|libraries)/.*\.(?:txt|md)$ {
 ###
 location ~* ^/sites/.*/files/civicrm/(?:ConfigAndLog|custom|upload|templates_c) {
   access_log off;
+  return 404;
+}
+
+###
+### Deny listed requests for security-by-obscurity reasons.
+###
+location = /CHANGELOG.txt {
   return 404;
 }
 

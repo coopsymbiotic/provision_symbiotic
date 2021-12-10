@@ -63,13 +63,13 @@ function provision_symbiotic_drush_command() {
  */
 function drush_provision_symbiotic_login() {
   drush_bootstrap(DRUSH_BOOTSTRAP_DRUPAL_FULL);
-  // Drupal 7/8 take a uid as an integer and not an array
-  if (drush_drupal_major_version() >= 7) {
-    $account = user_load(2);
+  if (drush_drupal_major_version() != 7) {
+    drush_log('drush_provision_symbiotic_login: Drupal 8 and above are not yet supported', 'warning');
+    return;
   }
-  else {
-    $account = user_load(array('uid' => 2));
-  }
+
+  // Assuming Drupal7
+  $account = user_load(2);
 
   if (empty($account)) {
     return drush_set_error('PROVISION_UNABLE_TO_LOAD_UID_2', 'Could not load the admin user with uid 2 on this site.');
@@ -82,13 +82,7 @@ function drush_provision_symbiotic_login() {
   drush_set_option('symbiotic_login', $onetime);
   drush_log(dt('Login url: !onetime', array('!onetime' => $onetime)), 'success');
 
-  if (drush_drupal_major_version() >= 7) {
-    drupal_session_destroy_uid(2);
-  }
-  else {
-    // valid for d5 and d6
-    sess_destroy_uid(2);
-  }
+  drupal_session_destroy_uid(2);
 }
 
 /**
@@ -226,7 +220,7 @@ function drush_provision_symbiotic_hush_alerts($severity = 'warning') {
     $severity = $option;
   }
 
-  $hush = ['checkDirVariables', 'checkUrlVariables', 'checkPhpVersion', 'checkVersion', 'checkDirsWritable', 'checkIndices', 'checkPriceFields', 'extensionUpdates', 'checkVersion_upgrade'];
+  $hush = ['checkDirVariables', 'checkUrlVariables', 'checkPhpVersion', 'checkVersion', 'checkDirsWritable', 'checkIndices', 'checkPriceFields', 'extensionUpdates', 'checkVersion_upgrade', 'checkExtensionsUpdates'];
 
   foreach ($hush as $h) {
     civicrm_api3('StatusPreference', 'create', [
@@ -599,4 +593,38 @@ function drush_provision_symbiotic_delete_stripe_webhooks() {
       $wh->delete();
     }
   }
+}
+
+/**
+ * Detects whether the URI pattern is for a dev site.
+ * This is also used by hosting_civicrm_ansible for the icinga monitoring.
+ */
+function provision_symbiotic_is_dev_site($uri) {
+  // Match against dev patterns:
+  // - crm-dev.* (SymbioTIC)
+  // - *.symbiodev.xyz (SymbioTIC)
+  // - *.crm-dev.* (legacy)
+  // - *.www-test.* (CiviCRM.org)
+  // - *test*makoa.net (Makoa)
+  // - test*-dms (CH)
+  if (preg_match('/^crm-dev\./', $uri)) {
+    return TRUE;
+  }
+  if (preg_match('/symbiodev.xyz/', $uri)) {
+    return TRUE;
+  }
+  if (preg_match('/\.crm-dev\./', $uri)) {
+    return TRUE;
+  }
+  if (preg_match('/\.www-test\./', $uri)) {
+    return TRUE;
+  }
+  if (preg_match('/test.*makoa.net/', $uri)) {
+    return TRUE;
+  }
+  if (preg_match('/test.*-dms/', $uri)) {
+    return TRUE;
+  }
+
+  return FALSE;
 }

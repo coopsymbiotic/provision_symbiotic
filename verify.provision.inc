@@ -164,6 +164,10 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
     if (drush_drupal_major_version() == 8) {
       Civi::settings()->set('userFrameworkResourceURL', "https://$host/vendor/civicrm/civicrm-core");
     }
+    elseif (drush_drupal_major_version() == 9) {
+      // Do nothing for now, it should be set automatically by CiviCRM to something like:
+      // Civi::settings()->set('userFrameworkResourceURL', "[civicrm.root]");
+    }
     else {
       // CiviCRM might be in sites/all/modules or in the profile directory.
       $module = _provision_civicrm_get_package_info();
@@ -175,48 +179,62 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
       Civi::settings()->set('userFrameworkResourceURL', $url);
     }
 
-    Civi::settings()->set('uploadDir', "$root/sites/$host/files/civicrm/upload/");
-    Civi::settings()->set('customFileUploadDir', "$root/sites/$host/files/civicrm/custom/");
+    // Only update the Directory settings if not using relative paths
+    $settings = [
+      'uploadDir' => "$root/sites/$host/files/civicrm/upload",
+      'customFileUploadDir' => "$root/sites/$host/files/civicrm/custom",
+      'imageUploadDir' => "$root/sites/$host/files/civicrm/persist/contribute",
+      'imageUploadURL' => "https://$host/sites/$host/files/civicrm/persist/contribute",
+    ];
+
+    foreach ($settings as $setting => $default) {
+      $oldval = Civi::settings()->get($setting);
+
+      if (strpos($oldval, '[civicrm.files]') === FALSE) {
+        Civi::settings()->set($setting, $default);
+      }
+    }
 
     Civi::settings()->set('customPHPPathDir', NULL);
     Civi::settings()->set('customTemplateDir', NULL);
 
     $extensions_suffix = NULL;
+    $extensionDir = Civi::settings()->get('extensionsDir');
 
-    if (preg_match('/civi-go.net$/', $host)) {
-      // iXiam default
-      $extensions_suffix = 'files/civicrm/ext';
-    }
-    elseif (file_exists("$root/sites/$host/modules/extensions/")) {
+    // Only update the extensionsDir if not using relative paths
+    if (strpos($extensionsDir, '[civicrm.files]') === FALSE) {
+      if (preg_match('/civi-go.net$/', $host)) {
+        // iXiam default
+        $extensions_suffix = 'files/civicrm/ext';
+      }
+      elseif (file_exists("$root/sites/$host/modules/extensions/")) {
+        // Symbiotic default
+        $extensions_suffix = 'modules/extensions';
+      }
+      elseif (file_exists("$root/sites/$host/modules/civi-extensions/")) {
+        // Legacy Symbiotic
+        $extensions_suffix = 'modules/civi-extensions';
+      }
+      elseif (file_exists("$root/sites/$host/civiext/")) {
+        // civicrm.org
+        $extensions_suffix = 'civiext';
+      }
+      elseif (file_exists("$root/sites/$host/files/civicrm/extensions/")) {
+        $extensions_suffix = 'files/civicrm/extensions';
+      }
+      elseif (file_exists("$root/sites/$host/files/civicrm/ext/")) {
+        // CiviCRM default
+        $extensions_suffix = 'files/civicrm/ext';
+      }
+
       // Symbiotic default
-      $extensions_suffix = 'modules/extensions';
-    }
-    elseif (file_exists("$root/sites/$host/modules/civi-extensions/")) {
-      // Legacy Symbiotic
-      $extensions_suffix = 'modules/civi-extensions';
-    }
-    elseif (file_exists("$root/sites/$host/civiext/")) {
-      // civicrm.org
-      $extensions_suffix = 'civiext';
-    }
-    elseif (file_exists("$root/sites/$host/files/civicrm/extensions/")) {
-      $extensions_suffix = 'files/civicrm/extensions';
-    }
-    elseif (file_exists("$root/sites/$host/files/civicrm/ext/")) {
-      // CiviCRM default
-      $extensions_suffix = 'files/civicrm/ext';
-    }
+      if (!$extensions_suffix) {
+        $extensions_suffix = 'modules/extensions';
+      }
 
-    // Symbiotic default
-    if (!$extensions_suffix) {
-      $extensions_suffix = 'modules/extensions';
+      Civi::settings()->set('extensionsDir', "$root/sites/$host/$extensions_suffix/");
+      Civi::settings()->set('extensionsURL', "https://$host/sites/$host/$extensions_suffix");
     }
-
-    Civi::settings()->set('extensionsDir', "$root/sites/$host/$extensions_suffix/");
-    Civi::settings()->set('extensionsURL', "https://$host/sites/$host/$extensions_suffix");
-
-    Civi::settings()->set('imageUploadDir', "$root/sites/$host/files/civicrm/persist/contribute");
-    Civi::settings()->set('imageUploadURL', "https://$host/sites/$host/files/civicrm/persist/contribute");
 
     _provision_symbiotic_disable_jobs_on_devsites();
 
@@ -232,27 +250,6 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
     // This includes the model site, the hostmaster, or sites not managed through hosting_restapi.
     if (!d()->hosting_restapi_token) {
       return;
-    }
-
-    // Migrate to CiviCRM settings instead of Drupal variables
-    if (drush_drupal_major_version() == 7) {
-      $migrate = [
-        'hosting_restapi_initial_done',
-        'hosting_restapi_token',
-        'hosting_restapi_hostmaster',
-      ];
-
-      foreach ($migrate as $setting) {
-        $val = Civi::settings()->get($setting);
-
-        if (!$val) {
-          $val = variable_get($setting);
-
-          if ($val) {
-            Civi::settings()->set($setting, $val);
-          }
-        }
-      }
     }
 
     if (!Civi::settings()->get('hosting_restapi_token')) {
@@ -332,6 +329,26 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
     }
 
     Civi::settings()->set('hosting_restapi_initial_done', 1);
+
+    // Get a one-time link (Drupal7)
+    $account = user_load(2);
+
+    if (!empty($account)) {
+      $onetime = user_pass_reset_url($account) . '/login';
+      $onetime = preg_replace('/http:/', 'https:', $onetime);
+
+      $result = drupal_http_request($hostmaster . '/hosting/api/site/welcome', [
+        'method' => 'POST',
+        'data' => [
+          'url' => d()->uri,
+          'token' => $token,
+          'loginurl' => $onetime,
+        ],
+        'headers' => ['Content-Type' => 'application/x-www-form-urlencoded'],
+      ]);
+
+      drush_log('Symbiotic: sending welcome one-time link: ' . $onetime . ' via ' . $hostmaster . ' == ' . print_r($result, 1), 'ok');
+    }
   }
   elseif (d()->type === 'server') {
     // Based on provision/platform/verify.provision.inc (pre provision verify)
@@ -356,27 +373,8 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
  * this just in case someone accidentally changes the environment back to 'production'.
  */
 function _provision_symbiotic_disable_jobs_on_devsites() {
-  // Match against dev patterns:
-  // - crm-dev.* (SymbioTIC)
-  // - *.symbiodev.xyz (SymbioTIC)
-  // - *.crm-dev.* (Jvillage)
-  // - *.www-test.* (CiviCRM.org)
-  $is_dev = FALSE;
-
-  if (preg_match('/^crm-dev\./', d()->uri)) {
-    $is_dev = TRUE;
-  }
-  if (preg_match('/symbiodev.xyz/', d()->uri)) {
-    $is_dev = TRUE;
-  }
-  if (preg_match('/\.crm-dev\./', d()->uri)) {
-    $is_dev = TRUE;
-  }
-  if (preg_match('/\.www-test\./', d()->uri)) {
-    $is_dev = TRUE;
-  }
-
-  if (!$is_dev) {
+  $uri = d()->uri;
+  if (!provision_symbiotic_is_dev_site($uri)) {
     return;
   }
 
