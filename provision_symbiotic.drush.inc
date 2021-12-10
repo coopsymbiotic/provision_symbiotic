@@ -350,32 +350,34 @@ function _provision_symbiotic_last_login() {
   $db = provision_symbiotic_db_connect();
 
   if ($db->connect_errno) {
-    return null;
+    return '';
   }
 
-  // @todo WordPress?
+  $cms = _provision_symbiotic_get_cms();
+
   try {
-    if (drush_drupal_major_version() >= 8) {
+    if ($cms == 'Drupal9' || $cms == 'Drupal8') {
       $result = $db->query('SELECT date(from_unixtime(access)) as t from users_field_data where uid != 1 order by access desc limit 1');
       if ($result) {
         $record = $result->fetch_assoc();
         return $record['t'];
       }
     }
-    else {
+    elseif ($cms == 'Drupal7') {
       $result = $db->query('SELECT date(from_unixtime(access)) as t from users where uid != 1 order by access desc limit 1');
       if ($result) {
         $record = $result->fetch_assoc();
         return $record['t'];
       }
     }
+    // @todo WordPress
   }
   catch (Exception $e) {
     // TODO
-    return null;
+    return '';
   }
 
-  return null;
+  return '';
 }
 
 /**
@@ -627,4 +629,30 @@ function provision_symbiotic_is_dev_site($uri) {
   }
 
   return FALSE;
+}
+
+function _provision_symbiotic_get_cms() {
+  $db = provision_symbiotic_db_connect();
+
+  if ($db->connect_errno) {
+    return null;
+  }
+
+  // Drupal8 or 9, we identify as 9
+  $result = $db->query("SHOW TABLES LIKE 'users_field_data'");
+  if ($result && mysqli_num_rows($result) > 0) {
+    return 'Drupal9';
+  }
+
+  $result = $db->query("SHOW TABLES LIKE 'users'");
+  if ($result && mysqli_num_rows($result) > 0) {
+    return 'Drupal7';
+  }
+
+  $result = $db->query("SHOW TABLES LIKE 'wp_options'");
+  if ($result && mysqli_num_rows($result) > 0) {
+    return 'WordPress';
+  }
+
+  return null;
 }
