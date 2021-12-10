@@ -186,7 +186,7 @@ function provision_symbiotic_provision_services() {
  * Returns FALSE if this is not a CiviCRM site (ex: hostmaster).
  */
 function provision_symbiotic_civicrm_init() {
-  if (drush_drupal_major_version() == 8 && Drupal::hasService('civicrm')) {
+  if (drush_drupal_major_version() >= 8 && Drupal::hasService('civicrm')) {
     \Drupal::service('civicrm')->initialize();
     return TRUE;
   }
@@ -203,13 +203,11 @@ function provision_symbiotic_civicrm_init() {
  * Used to simplify code shared on WordPress and Drupal(s).
  */
 function provision_symbiotic_db_connect() {
-  global $options;
-
-  if (empty($options['db_host'])) {
+  if (empty($_SERVER['db_host'])) {
     require_once d()->site_path . '/drushrc.php';
   }
 
-  $db = new mysqli($options['db_host'], $options['db_user'], $options['db_passwd'], $options['db_name']);
+  $db = new mysqli($_SERVER['db_host'], $_SERVER['db_user'], $_SERVER['db_passwd'], $_SERVER['db_name']);
   return $db;
 }
 
@@ -351,24 +349,32 @@ function drush_provision_symbiotic_translate_options($language, $option_group_id
  */
 function drush_provision_symbiotic_last_login() {
   $last = _provision_symbiotic_last_login();
-  drush_log('Last login: ' . $record->t, 'ok');
+  drush_log('Last login: ' . $last, 'ok');
 }
 
 function _provision_symbiotic_last_login() {
   $db = provision_symbiotic_db_connect();
 
   if ($db->connect_errno) {
-    return $stats;
+    return null;
   }
 
-  // @todo Drupal8, WordPress?
+  // @todo WordPress?
   try {
-    $result = $db->query('SELECT date(from_unixtime(access)) as t from users where uid != 1 order by access desc limit 1');
-    if ($result) {
-      $record = $result->fetch_assoc();
-      return $record['t'];
+    if (drush_drupal_major_version() >= 8) {
+      $result = $db->query('SELECT date(from_unixtime(access)) as t from users_field_data where uid != 1 order by access desc limit 1');
+      if ($result) {
+        $record = $result->fetch_assoc();
+        return $record['t'];
+      }
     }
-    return $last;
+    else {
+      $result = $db->query('SELECT date(from_unixtime(access)) as t from users where uid != 1 order by access desc limit 1');
+      if ($result) {
+        $record = $result->fetch_assoc();
+        return $record['t'];
+      }
+    }
   }
   catch (Exception $e) {
     // TODO
