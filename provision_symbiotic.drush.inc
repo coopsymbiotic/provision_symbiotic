@@ -398,10 +398,13 @@ function drush_provision_symbiotic_cleanup() {
   }
 
   // Start by deleting potentially large log tables
-  if (provision_symbiotic_civicrm_init()) {
+  try {
     // Keep only 14 days.
     // https://github.com/lcdservices/biz.lcdservices.joblogmanagement/blob/master/api/v3/JobLog/Purge.php
     $db->query('DELETE FROM civicrm_job_log WHERE run_time < (NOW() - INTERVAL 14 DAY)');
+  }
+  catch (Exception $e) {
+    // Probably not a CiviCRM site
   }
 
   // Optimize fragmented tables
