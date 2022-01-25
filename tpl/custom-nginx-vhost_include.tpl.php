@@ -256,9 +256,9 @@ location = /robots.txt {
   add_header X-Content-Type-Options nosniff;
   add_header X-XSS-Protection "1; mode=block";
 <?php if ($nginx_config_mode == 'extended'): ?>
-  try_files /sites/$main_site_name/files/$host.robots.txt /sites/$main_site_name/files/robots.txt $uri @cache;
+  try_files /sites/$main_site_name/files/$host.robots.txt /sites/$main_site_name/files/robots.txt /sites/$main_site_name/wp-content/$host.robots.txt /sites/$main_site_name/wp-content/robots.txt $uri @cache;
 <?php else: ?>
-  try_files /sites/$main_site_name/files/$host.robots.txt /sites/$main_site_name/files/robots.txt $uri @drupal;
+  try_files /sites/$main_site_name/files/$host.robots.txt /sites/$main_site_name/files/robots.txt /sites/$main_site_name/wp-content/$host.robots.txt /sites/$main_site_name/wp-content/robots.txt $uri @drupal;
 <?php endif; ?>
 }
 
