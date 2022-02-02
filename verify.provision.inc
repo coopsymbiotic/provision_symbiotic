@@ -118,7 +118,7 @@ function provision_symbiotic_provision_nginx_vhost_config($uri, $data = null) {
   }
 
   // D8 extern support
-  if (drush_drupal_major_version() == 8) {
+  if (drush_drupal_major_version() >= 8) {
     // Depends on Aegir 7.x-3.152: https://www.drupal.org/project/provision/issues/2791095#comment-12717109
     // See also: https://www.drupal.org/project/provision/issues/3000599
     $phpfpm_socket_path = Provision_Service_http_nginx::getPhpFpmSocketPath();
@@ -264,7 +264,7 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
     }
 
     // @todo Drupal8 is not currently supported
-    if (drush_drupal_major_version() == 8) {
+    if (drush_drupal_major_version() >= 8) {
       return;
     }
 
