@@ -402,9 +402,25 @@ function drush_provision_symbiotic_cleanup() {
     // Keep only 14 days.
     // https://github.com/lcdservices/biz.lcdservices.joblogmanagement/blob/master/api/v3/JobLog/Purge.php
     $db->query('DELETE FROM civicrm_job_log WHERE run_time < (NOW() - INTERVAL 14 DAY)');
+    // These logging tables can be huge and not particularly relevant
+    $db->query('DELETE FROM log_civicrm_mailing WHERE log_date < (NOW() - INTERVAL 14 DAY)');
+    $db->query('DELETE FROM log_civicrm_group WHERE log_date < (NOW() - INTERVAL 14 DAY)');
   }
   catch (Exception $e) {
     // Probably not a CiviCRM site
+  }
+
+  try {
+    $db->query('TRUNCATE watchdog');
+  }
+  catch (Exception $e) {
+    // Probably not a Drupal site, or watchdog not enabled
+  }
+
+  try {
+  }
+  catch (Exception $e) {
+    // Probably not a CiviCRM site, or detailed logging not enabled
   }
 
   // Optimize fragmented tables
@@ -424,7 +440,6 @@ function drush_provision_symbiotic_cleanup() {
   // @todo Consider truncating specific cache tables
   // but doing so cause problems on sites. Maybe sometimes, if they get over a certain size?
   // - civicrm_cache
-  // - watchdog
   // - form_cache
   // - sessions
 
