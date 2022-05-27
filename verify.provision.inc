@@ -56,21 +56,27 @@ function provision_symbiotic_provision_nginx_vhost_config($uri, $data = null) {
 
     // Wee hack to allow requests from our public IPs, since the
     // wget runs against the official/public hostname.
-    $allow = ['127.0.0.1', '::1'];
+    $local_ips = ['127.0.0.1', '::1'];
     $hosts = file_get_contents('/etc/hosts');
 
     $lines = explode("\n", $hosts);
 
     foreach ($lines as $line) {
       if (preg_match('/^([^\s]+)\s+' . d()->uri . '/', $line, $matches)) {
-        $allow[] = $matches[1];
+        if (!in_array($matches[1], $local_ips)) {
+          $local_ips[] = $matches[1];
+        }
       }
     }
 
     // Add other IPs from Symbiotic infra, ex: for inventory access
+    // The "system_whitelist" restricts access to fpm and ansible inventory
+    // The other "whitelist" is optional, and restricts access to Aegir itself
+    $provision_symbiotic_system_whitelist = $local_ips;
+
     if ($t = variable_get('provision_symbiotic_system_whitelist')) {
-      $t = explode(',', $t);
-      $allow = array_merge($allow, $t);
+      $provision_symbiotic_system_whitelist = explode(',', $t);
+      $provision_symbiotic_system_whitelist = array_merge($local_ips, $provision_symbiotic_system_whitelist);
     }
 
     $htaccess .= "  location ~ ^/fpm-(status|ping)\$ {\n";
@@ -78,19 +84,20 @@ function provision_symbiotic_provision_nginx_vhost_config($uri, $data = null) {
     $htaccess .= "    access_log off;\n";
     $htaccess .= "    keepalive_requests 0;\n";
 
-    foreach ($allow as $a) {
-      $htaccess .= "    allow $a;\n";
+    foreach ($provision_symbiotic_system_whitelist as $ip) {
+      $htaccess .= "    allow $ip;\n";
     }
 
     $htaccess .= "    deny all;\n";
     $htaccess .= "    fastcgi_pass unix:$phpfpm_socket_path;\n";
     $htaccess .= "  }\n\n";
 
-    // IP whitelisting, if enabled
+    // Restricts access to Aegir itself, if enabled
     $whitelist = variable_get('provision_symbiotic_whitelist');
 
     if ($whitelist) {
       $whitelist = explode(',', $whitelist);
+      $whitelist = array_merge($allow, $whitelist);
 
       $htaccess .= "  # IP whitelisting by provision_symbiotic\n";
 
@@ -108,8 +115,8 @@ function provision_symbiotic_provision_nginx_vhost_config($uri, $data = null) {
     $htaccess .= "    access_log off;\n";
     $htaccess .= "    keepalive_requests 0;\n";
 
-    foreach ($allow as $a) {
-      $htaccess .= "    allow $a;\n";
+    foreach ($provision_symbiotic_system_whitelist as $ip) {
+      $htaccess .= "    allow $ip;\n";
     }
 
     $htaccess .= "    deny all;\n";
