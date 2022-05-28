@@ -19,8 +19,13 @@ else {
   $ssl_args = "ssl";
 }
 
-// Support for wildcard certs
-$https_key_name = $this->uri;
+// Locate the https cert, if there is one
+// Support for wildcard certs and local overrides for a single cert,
+// and otherwise fallsback on letsencrypt.
+// Note that sometimes letsencrypt fails to generate a cert (DNS fail, vhost snafu, etc)
+// so if the cert is not available on disk, we do not enable https.
+// This logic should probably be elsewhere and set https_cert_ok to FALSE if not found.
+$https_key_name = '';
 $domain_parts = explode('.', $this->uri);
 
 // Remove the first part, ex: foo.bar.example.org becomes bar.example.org
@@ -48,9 +53,14 @@ if (file_exists("/var/aegir/config/letsencrypt.d/{$this->uri}.override/privkey.p
   $https_key_name = "{$this->uri}.override";
 }
 
+if (!$https_key_name && file_exists("/var/aegir/config/letsencrypt.d/{$this->uri}/privkey.pem")) {
+  drush_log(dt("Provision Symbiotic: Found letsencrypt certificate"), 'ok');
+  $https_key_name = $this->uri;
+}
+
 ?>
 
-<?php if ($this->redirection): ?>
+<?php if ($https_key_name && $this->redirection): ?>
 <?php foreach ($this->aliases as $alias_url): ?>
 server {
   listen       <?php print "*:{$https_port} {$ssl_args}"; ?>;
@@ -101,6 +111,7 @@ server {
 <?php endforeach; ?>
 <?php endif; ?>
 
+<?php if ($https_key_name): ?>
 server {
   include       fastcgi_params;
 
@@ -181,6 +192,7 @@ server {
 <?php print $extra_config; ?>
   include                    <?php print $server->include_path; ?>/nginx_vhost_common.conf;
 }
+<?php endif; ?>
 
 <?php endif; ?>
 
