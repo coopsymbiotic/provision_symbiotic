@@ -63,13 +63,13 @@ function provision_symbiotic_drush_command() {
  */
 function drush_provision_symbiotic_login() {
   drush_bootstrap(DRUSH_BOOTSTRAP_DRUPAL_FULL);
-  // Drupal 7/8 take a uid as an integer and not an array
-  if (drush_drupal_major_version() >= 7) {
-    $account = user_load(2);
+  if (drush_drupal_major_version() != 7) {
+    drush_log('drush_provision_symbiotic_login: Drupal 8 and above are not yet supported', 'warning');
+    return;
   }
-  else {
-    $account = user_load(array('uid' => 2));
-  }
+
+  // Assuming Drupal7
+  $account = user_load(2);
 
   if (empty($account)) {
     return drush_set_error('PROVISION_UNABLE_TO_LOAD_UID_2', 'Could not load the admin user with uid 2 on this site.');
@@ -82,13 +82,7 @@ function drush_provision_symbiotic_login() {
   drush_set_option('symbiotic_login', $onetime);
   drush_log(dt('Login url: !onetime', array('!onetime' => $onetime)), 'success');
 
-  if (drush_drupal_major_version() >= 7) {
-    drupal_session_destroy_uid(2);
-  }
-  else {
-    // valid for d5 and d6
-    sess_destroy_uid(2);
-  }
+  drupal_session_destroy_uid(2);
 }
 
 /**
@@ -186,7 +180,7 @@ function provision_symbiotic_provision_services() {
  * Returns FALSE if this is not a CiviCRM site (ex: hostmaster).
  */
 function provision_symbiotic_civicrm_init() {
-  if (drush_drupal_major_version() == 8 && Drupal::hasService('civicrm')) {
+  if (drush_drupal_major_version() >= 8 && Drupal::hasService('civicrm')) {
     \Drupal::service('civicrm')->initialize();
     return TRUE;
   }
@@ -203,13 +197,11 @@ function provision_symbiotic_civicrm_init() {
  * Used to simplify code shared on WordPress and Drupal(s).
  */
 function provision_symbiotic_db_connect() {
-  global $options;
-
-  if (empty($options['db_host'])) {
+  if (empty($_SERVER['db_host'])) {
     require_once d()->site_path . '/drushrc.php';
   }
 
-  $db = new mysqli($options['db_host'], $options['db_user'], $options['db_passwd'], $options['db_name']);
+  $db = new mysqli($_SERVER['db_host'], $_SERVER['db_user'], $_SERVER['db_passwd'], $_SERVER['db_name']);
   return $db;
 }
 
@@ -351,31 +343,41 @@ function drush_provision_symbiotic_translate_options($language, $option_group_id
  */
 function drush_provision_symbiotic_last_login() {
   $last = _provision_symbiotic_last_login();
-  drush_log('Last login: ' . $record->t, 'ok');
+  drush_log('Last login: ' . $last, 'ok');
 }
 
 function _provision_symbiotic_last_login() {
   $db = provision_symbiotic_db_connect();
 
   if ($db->connect_errno) {
-    return $stats;
+    return '';
   }
 
-  // @todo Drupal8, WordPress?
+  $cms = _provision_symbiotic_get_cms();
+
   try {
-    $result = $db->query('SELECT date(from_unixtime(access)) as t from users where uid != 1 order by access desc limit 1');
-    if ($result) {
-      $record = $result->fetch_assoc();
-      return $record['t'];
+    if ($cms == 'Drupal9' || $cms == 'Drupal8') {
+      $result = $db->query('SELECT date(from_unixtime(access)) as t from users_field_data where uid != 1 order by access desc limit 1');
+      if ($result) {
+        $record = $result->fetch_assoc();
+        return $record['t'];
+      }
     }
-    return $last;
+    elseif ($cms == 'Drupal7') {
+      $result = $db->query('SELECT date(from_unixtime(access)) as t from users where uid != 1 order by access desc limit 1');
+      if ($result) {
+        $record = $result->fetch_assoc();
+        return $record['t'];
+      }
+    }
+    // @todo WordPress
   }
   catch (Exception $e) {
     // TODO
-    return null;
+    return '';
   }
 
-  return null;
+  return '';
 }
 
 /**
@@ -396,10 +398,29 @@ function drush_provision_symbiotic_cleanup() {
   }
 
   // Start by deleting potentially large log tables
-  if (provision_symbiotic_civicrm_init()) {
+  try {
     // Keep only 14 days.
     // https://github.com/lcdservices/biz.lcdservices.joblogmanagement/blob/master/api/v3/JobLog/Purge.php
     $db->query('DELETE FROM civicrm_job_log WHERE run_time < (NOW() - INTERVAL 14 DAY)');
+    // These logging tables can be huge and not particularly relevant
+    $db->query('DELETE FROM log_civicrm_mailing WHERE log_date < (NOW() - INTERVAL 14 DAY)');
+    $db->query('DELETE FROM log_civicrm_group WHERE log_date < (NOW() - INTERVAL 14 DAY)');
+  }
+  catch (Exception $e) {
+    // Probably not a CiviCRM site
+  }
+
+  try {
+    $db->query('TRUNCATE watchdog');
+  }
+  catch (Exception $e) {
+    // Probably not a Drupal site, or watchdog not enabled
+  }
+
+  try {
+  }
+  catch (Exception $e) {
+    // Probably not a CiviCRM site, or detailed logging not enabled
   }
 
   // Optimize fragmented tables
@@ -419,7 +440,6 @@ function drush_provision_symbiotic_cleanup() {
   // @todo Consider truncating specific cache tables
   // but doing so cause problems on sites. Maybe sometimes, if they get over a certain size?
   // - civicrm_cache
-  // - watchdog
   // - form_cache
   // - sessions
 
@@ -627,4 +647,30 @@ function provision_symbiotic_is_dev_site($uri) {
   }
 
   return FALSE;
+}
+
+function _provision_symbiotic_get_cms() {
+  $db = provision_symbiotic_db_connect();
+
+  if ($db->connect_errno) {
+    return null;
+  }
+
+  // Drupal8 or 9, we identify as 9
+  $result = $db->query("SHOW TABLES LIKE 'users_field_data'");
+  if ($result && mysqli_num_rows($result) > 0) {
+    return 'Drupal9';
+  }
+
+  $result = $db->query("SHOW TABLES LIKE 'users'");
+  if ($result && mysqli_num_rows($result) > 0) {
+    return 'Drupal7';
+  }
+
+  $result = $db->query("SHOW TABLES LIKE 'wp_options'");
+  if ($result && mysqli_num_rows($result) > 0) {
+    return 'WordPress';
+  }
+
+  return null;
 }

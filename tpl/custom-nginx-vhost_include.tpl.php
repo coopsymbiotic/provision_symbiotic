@@ -256,9 +256,9 @@ location = /robots.txt {
   add_header X-Content-Type-Options nosniff;
   add_header X-XSS-Protection "1; mode=block";
 <?php if ($nginx_config_mode == 'extended'): ?>
-  try_files /sites/$main_site_name/files/$host.robots.txt /sites/$main_site_name/files/robots.txt $uri @cache;
+  try_files /sites/$main_site_name/files/$host.robots.txt /sites/$main_site_name/files/robots.txt /sites/$main_site_name/wp-content/$host.robots.txt /sites/$main_site_name/wp-content/robots.txt $uri @cache;
 <?php else: ?>
-  try_files /sites/$main_site_name/files/$host.robots.txt /sites/$main_site_name/files/robots.txt $uri @drupal;
+  try_files /sites/$main_site_name/files/$host.robots.txt /sites/$main_site_name/files/robots.txt /sites/$main_site_name/wp-content/$host.robots.txt /sites/$main_site_name/wp-content/robots.txt $uri @drupal;
 <?php endif; ?>
 }
 
@@ -501,7 +501,7 @@ location ^~ /audio/download {
 ###
 ### Deny listed requests for security reasons.
 ###
-location ~* (\.(?:git.*|htaccess|engine|config|inc|ini|info|install|make|module|profile|test|pl|po|sh|.*sql|theme|tpl(\.php)?|xtmpl)(~|\.sw[op]|\.bak|\.orig|\.save)?$|^(\..*|Entries.*|Repository|Root|Tag|Template|composer\.(json|lock))$|^#.*#$|\.php(~|\.sw[op]|\.bak|\.orig\.save))$ {
+location ~* (\.(?:git.*|htaccess|engine|config|inc|ini|info|install|make|module|profile|test|pl|po|sh|.*sql|theme|tpl(\.php)?|xtmpl|pem|crt)(~|\.sw[op]|\.bak|\.orig|\.save)?$|^(\..*|Entries.*|Repository|Root|Tag|Template|composer\.(json|lock))$|^#.*#$|\.php(~|\.sw[op]|\.bak|\.orig\.save))$ {
   access_log off;
   return 404;
 }
@@ -519,6 +519,13 @@ location ~* /(?:modules|themes|libraries)/.*\.(?:txt|md)$ {
 ###
 location ~* ^/sites/.*/files/civicrm/(?:ConfigAndLog|custom|upload|templates_c) {
   access_log off;
+  return 404;
+}
+
+###
+### Deny listed requests for security-by-obscurity reasons.
+###
+location = /CHANGELOG.txt {
   return 404;
 }
 
