@@ -765,14 +765,7 @@ location ~* \.css$ {
   add_header Access-Control-Allow-Origin *;
   add_header X-Content-Type-Options nosniff;
   add_header X-XSS-Protection "1; mode=block";
-  try_files   /cache/perm/$host${uri}_.css $uri =404;
-}
-
-###
-### Support for dynamic /sw.js requests. See #2982073 on drupal.org
-###
-location = /sw.js {
-  try_files $uri @drupal;
+  try_files  /sites/$host/static-html/${uri}.css $uri =404;
 }
 
 ###
@@ -792,7 +785,14 @@ location ~* \.(?:js|htc)$ {
   add_header Access-Control-Allow-Origin *;
   add_header X-Content-Type-Options nosniff;
   add_header X-XSS-Protection "1; mode=block";
-  try_files   /cache/perm/$host${uri}_.js $uri =404;
+  try_files  /sites/$host/static-html/${uri}.js $uri =404;
+}
+
+###
+### Support for dynamic /sw.js requests. See #2982073 on drupal.org
+###
+location = /sw.js {
+  try_files $uri @drupal;
 }
 
 ###
