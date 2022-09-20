@@ -97,7 +97,7 @@ function provision_symbiotic_provision_nginx_vhost_config($uri, $data = null) {
 
     if ($whitelist) {
       $whitelist = explode(',', $whitelist);
-      $whitelist = array_merge($allow, $whitelist);
+      $whitelist = array_merge($local_ips, $whitelist);
 
       $htaccess .= "  # IP whitelisting by provision_symbiotic\n";
 
