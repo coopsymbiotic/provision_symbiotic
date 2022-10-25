@@ -56,21 +56,27 @@ function provision_symbiotic_provision_nginx_vhost_config($uri, $data = null) {
 
     // Wee hack to allow requests from our public IPs, since the
     // wget runs against the official/public hostname.
-    $allow = ['127.0.0.1', '::1'];
+    $local_ips = ['127.0.0.1', '::1'];
     $hosts = file_get_contents('/etc/hosts');
 
     $lines = explode("\n", $hosts);
 
     foreach ($lines as $line) {
       if (preg_match('/^([^\s]+)\s+' . d()->uri . '/', $line, $matches)) {
-        $allow[] = $matches[1];
+        if (!in_array($matches[1], $local_ips)) {
+          $local_ips[] = $matches[1];
+        }
       }
     }
 
     // Add other IPs from Symbiotic infra, ex: for inventory access
+    // The "system_whitelist" restricts access to fpm and ansible inventory
+    // The other "whitelist" is optional, and restricts access to Aegir itself
+    $provision_symbiotic_system_whitelist = $local_ips;
+
     if ($t = variable_get('provision_symbiotic_system_whitelist')) {
-      $t = explode(',', $t);
-      $allow = array_merge($allow, $t);
+      $provision_symbiotic_system_whitelist = explode(',', $t);
+      $provision_symbiotic_system_whitelist = array_merge($local_ips, $provision_symbiotic_system_whitelist);
     }
 
     $htaccess .= "  location ~ ^/fpm-(status|ping)\$ {\n";
@@ -78,19 +84,20 @@ function provision_symbiotic_provision_nginx_vhost_config($uri, $data = null) {
     $htaccess .= "    access_log off;\n";
     $htaccess .= "    keepalive_requests 0;\n";
 
-    foreach ($allow as $a) {
-      $htaccess .= "    allow $a;\n";
+    foreach ($provision_symbiotic_system_whitelist as $ip) {
+      $htaccess .= "    allow $ip;\n";
     }
 
     $htaccess .= "    deny all;\n";
     $htaccess .= "    fastcgi_pass unix:$phpfpm_socket_path;\n";
     $htaccess .= "  }\n\n";
 
-    // IP whitelisting, if enabled
+    // Restricts access to Aegir itself, if enabled
     $whitelist = variable_get('provision_symbiotic_whitelist');
 
     if ($whitelist) {
       $whitelist = explode(',', $whitelist);
+      $whitelist = array_merge($local_ips, $whitelist);
 
       $htaccess .= "  # IP whitelisting by provision_symbiotic\n";
 
@@ -108,8 +115,8 @@ function provision_symbiotic_provision_nginx_vhost_config($uri, $data = null) {
     $htaccess .= "    access_log off;\n";
     $htaccess .= "    keepalive_requests 0;\n";
 
-    foreach ($allow as $a) {
-      $htaccess .= "    allow $a;\n";
+    foreach ($provision_symbiotic_system_whitelist as $ip) {
+      $htaccess .= "    allow $ip;\n";
     }
 
     $htaccess .= "    deny all;\n";
@@ -157,27 +164,11 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
       return;
     }
 
+    drush_log('provision_symbiotic: drush_provision_symbiotic_post_provision_verify start', 'ok');
+
     // Make sure that CiviCRM path/url settings are correct.
     $root = d()->root;
     $host = d()->uri;
-
-    if (drush_drupal_major_version() == 8) {
-      Civi::settings()->set('userFrameworkResourceURL', "https://$host/vendor/civicrm/civicrm-core");
-    }
-    elseif (drush_drupal_major_version() == 9) {
-      // Do nothing for now, it should be set automatically by CiviCRM to something like:
-      // Civi::settings()->set('userFrameworkResourceURL', "[civicrm.root]");
-    }
-    else {
-      // CiviCRM might be in sites/all/modules or in the profile directory.
-      $module = _provision_civicrm_get_package_info();
-      $url = $module['filename'];
-      $url = substr($url, strlen(d()->root));
-      $url = substr($url, 0, - strlen('drupal/civicrm.module'));
-      $url = "https://$host$url";
-
-      Civi::settings()->set('userFrameworkResourceURL', $url);
-    }
 
     // Only update the Directory settings if not using relative paths
     $settings = [
@@ -201,7 +192,11 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
     $extensions_suffix = NULL;
     $extensionDir = Civi::settings()->get('extensionsDir');
 
+    drush_log('provision_symbiotic: extensionsDir = ' . $extensionDir, 'ok');
+
     // Only update the extensionsDir if not using relative paths
+    // @todo This was moved to hosting_civicrm and could be removed here
+    // once we update hosting_civicrm everywhere
     if (strpos($extensionsDir, '[civicrm.files]') === FALSE) {
       if (preg_match('/civi-go.net$/', $host)) {
         // iXiam default
@@ -244,6 +239,22 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
     if ($site_id == 'template' && strpos($host, 'template') === FALSE && strpos($host, 'modele') === FALSE) {
       $sid = md5('sid_' . time() . $host);
       civicrm_api3('Setting', 'create', ['domain_id' => 'all', 'site_id' => $sid]);
+    }
+
+    // Flush cache - copy-pasted from hosting_civicrm - @todo remove when we remove the above settings updates (now in hosting_civicrm)
+    // Run as a shell command, instead of PHP, so that fatal errors do not crash the verify task
+    $command = 'cd ' . escapeshellarg(d()->site_path) . ' && drush cc drush && drush @' . escapeshellarg(d()->uri) . ' cvapi --out=json system.flush';
+    drush_log(dt("CiviCRM: calling cache clear: %command", ['%command' => $command]), 'ok');
+    $json = system($command, $retval);
+    $output = json_decode($json, TRUE);
+    if ($retval || !empty($output['is_error'])) {
+      drush_log(dt("CiviCRM: cache clear failed (the ConfigAndLog should have more details): %output", ['%output' => $json]), 'warning');
+    }
+    elseif (!preg_match('/is_error.:0/', $json)) {
+      drush_log(dt("CiviCRM: cache clear may have failed: %output", ['%output' => $json]), 'warning');
+    }
+    else {
+      drush_log(dt("CiviCRM: cache clear success: %output", ['%output' => $json]), 'ok');
     }
 
     // We can't auto-configure sites without a token.
