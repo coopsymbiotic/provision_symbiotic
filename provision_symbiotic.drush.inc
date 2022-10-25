@@ -210,7 +210,7 @@ function provision_symbiotic_db_connect() {
  *
  * Hush CiviCRM alerts.
  */
-function drush_provision_symbiotic_hush_alerts($severity = 'warning') {
+function drush_provision_symbiotic_hush_alerts($severity = 'warning', $name = NULL) {
   if (!provision_symbiotic_civicrm_init()) {
     return;
   }
@@ -221,6 +221,10 @@ function drush_provision_symbiotic_hush_alerts($severity = 'warning') {
   }
 
   $hush = ['checkDirVariables', 'checkUrlVariables', 'checkPhpVersion', 'checkVersion', 'checkDirsWritable', 'checkIndices', 'checkPriceFields', 'extensionUpdates', 'checkVersion_upgrade', 'checkExtensionsUpdates'];
+
+  if (!empty($name)) {
+    $hush = explode(',', $name);
+  }
 
   foreach ($hush as $h) {
     civicrm_api3('StatusPreference', 'create', [
