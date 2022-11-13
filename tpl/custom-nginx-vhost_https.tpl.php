@@ -79,7 +79,6 @@ server {
   }
 ?>
 
-  ssl                        on;
   ssl_certificate_key        /var/aegir/config/letsencrypt.d/<?php print $https_key_name; ?>/privkey.pem;
   ssl_certificate            /var/aegir/config/letsencrypt.d/<?php print $https_key_name; ?>/fullchain.pem;
   ssl_protocols              TLSv1.2 TLSv1.3;
