@@ -98,17 +98,14 @@ function drush_provision_symbiotic_login() {
  */
 function provision_symbiotic_provision_config_load_templates($config) {
   if (is_a($config, 'Provision_Config_Apache_Ssl_Site')) {
-    // c.f. #239, for IP vhost override.
     $file = dirname(__FILE__) . '/tpl/custom-apache-vhost_ssl.tpl.php';
     return $file;
   }
   elseif (is_a($config, 'Provision_Config_Nginx_Ssl_Site')) {
-    // c.f. #239, for IP vhost override (old hosting_ssl).
     $file = dirname(__FILE__) . '/tpl/custom-nginx-vhost_ssl.tpl.php';
     return $file;
   }
   elseif (is_a($config, 'Provision_Config_Nginx_Https_Site')) {
-    // c.f. #239, for IP vhost override (hosting_https).
     $file = dirname(__FILE__) . '/tpl/custom-nginx-vhost_https.tpl.php';
     return $file;
   }

@@ -188,8 +188,25 @@ server {
   ssl_session_timeout 10m;
   keepalive_timeout          70;
 
-<?php print $extra_config; ?>
-  include                    <?php print $server->include_path; ?>/nginx_vhost_common.conf;
+
+<?php
+
+  if ($this->site_enabled) {
+    if ($extra_config) {
+      print "  " . $extra_config . "\n\n";
+    }
+    print "  include {$server->include_path}/nginx_vhost_common.conf;\n";
+  }
+  else {
+    print "  add_header Content-Type text/html;\n";
+    print "  return 200 '<div><ul>"
+    . "<li>(en) This site has been disabled by the server administrators.</li>"
+    . "<li>(es) Este sitio ha sido inhabilitado por la administraci&oacute;n.</li>"
+    . "<li>(fr) Ce site a &eacute;t&eacute; d&eacute;sactiv&eacute; par l&#39;administration.</li>"
+    . "</ul></div>';\n";
+  }
+
+?>
 }
 <?php endif; ?>
 
