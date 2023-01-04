@@ -200,9 +200,9 @@ server {
   else {
     print "  add_header Content-Type text/html;\n";
     print "  return 200 '<div><ul>"
-    . "<li>(en) This site has been disabled by the server administrators.</li>"
-    . "<li>(es) Este sitio ha sido inhabilitado por la administraci&oacute;n.</li>"
-    . "<li>(fr) Ce site a &eacute;t&eacute; d&eacute;sactiv&eacute; par l&#39;administration.</li>"
+    . "<li>(en) This web site has been disabled. Please contact the server administrators for more information.</li>"
+    . "<li>(es) Este sitio web ha sido deshabilitado. Por favor contacte con los administradores para obtener m&agrave;s informaci&ograve;n.</li>"
+    . "<li>(fr) Ce site a &eacute;t&eacute; d&eacute;sactiv&eacute;. Veuillez contacter les personnes responsables de l&#39;administration du serveur pour plus d&#39;information.</li>"
     . "</ul></div>';\n";
   }
 
