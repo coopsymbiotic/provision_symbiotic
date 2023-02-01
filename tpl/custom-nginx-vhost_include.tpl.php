@@ -464,19 +464,22 @@ location ^~ /admin {
 }
 
 ###
-### Avoid caching /civicrm* and protect it from bots.
+### CiviCRM
 ###
-location ^~ /civicrm {
-  # SYMBIOTIC Allow bots and always log (ex: contribution/event pages)
-  set $nocache_details "Skip";
+### SYMBIOTIC - Always cache Mosaico images (and multilingual)
+location ^~ /civicrm/mosaico/img {
+  try_files $uri @drupal;
+}
+location ~* ^/\w\w/civicrm/mosaico/img {
   try_files $uri @drupal;
 }
 
-###
-### Avoid caching /civicrm* and protect it from bots on a multi-lingual site
-###
+### SYMBIOTIC - Do not cache other CiviCRM pages and always log (and multilingual)
+location ^~ /civicrm {
+  set $nocache_details "Skip";
+  try_files $uri @drupal;
+}
 location ~* ^/\w\w/civicrm {
-  # SYMBIOTIC Allow bots and always log (ex: contribution/event pages)
   set $nocache_details "Skip";
   try_files $uri @drupal;
 }
