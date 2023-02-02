@@ -1394,7 +1394,6 @@ location = /index.php {
   add_header X-GeoIP-Country-Code "$geoip_country_code";
   add_header X-GeoIP-Country-Name "$geoip_country_name";
 <?php endif; ?>
-<?php if ($nginx_config_mode == 'extended'): ?>
   add_header X-Core-Variant "$core_detected";
   add_header X-Loc-Where "$location_detected";
   add_header X-Http-Pragma "$http_pragma";
@@ -1413,7 +1412,6 @@ location = /index.php {
   add_header Strict-Transport-Security $symbiotic_hsts;
   add_header Content-Security-Policy $symbiotic_security_policy;
 
-<?php endif; ?>
   add_header Cache-Control "no-store, no-cache, must-revalidate, post-check=0, pre-check=0";
   try_files     $uri =404; ### check for existence of php file first
 <?php if ($satellite_mode == 'boa'): ?>
