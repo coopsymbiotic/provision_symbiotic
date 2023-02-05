@@ -470,6 +470,14 @@ location ^~ /civicrm/mosaico/img {
 location ~* ^/\w\w/civicrm/mosaico/img {
   try_files $uri @drupal;
 }
+### SYMBIOTIC - Always cache Contact Images (and multilingual)
+# This is mostly for images exposed by SearchKit
+location ^~ /civicrm/contact/imagefile {
+  try_files $uri @drupal;
+}
+location ~* ^/\w\w/civicrm/contact/imagefile {
+  try_files $uri @drupal;
+}
 
 ### SYMBIOTIC - Do not cache other CiviCRM pages and always log (and multilingual)
 location ^~ /civicrm {
