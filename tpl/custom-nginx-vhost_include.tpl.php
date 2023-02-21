@@ -1485,11 +1485,12 @@ location = /index.php {
 
 ###
 ### Send other known php requests/files to php-fpm without any caching.
+### [ML] SYMBIOTIC Removed boost
 ###
 <?php if ($nginx_config_mode == 'extended'): ?>
 location ~* ^/(?:core/)?(?:boost_stats|rtoc|js)\.php$ {
 <?php else: ?>
-location ~* ^/(?:index|cron|boost_stats|update|authorize|xmlrpc)\.php$ {
+location ~* ^/(?:index|cron|update|authorize|xmlrpc)\.php$ {
 <?php endif; ?>
 <?php if ($satellite_mode == 'boa'): ?>
   limit_conn   limreq 88;
@@ -1510,36 +1511,10 @@ location ~* ^/(?:index|cron|boost_stats|update|authorize|xmlrpc)\.php$ {
 <?php endif; ?>
 }
 
-<?php if ($nginx_config_mode == 'extended'): ?>
 ###
-### Allow access to /authorize.php and /update.php only for logged in admin user.
-###
-location ~* ^/(?:core/)?(?:authorize|update)\.php$ {
-  error_page 418 = @allowupdate;
-  if ( $cache_uid ) {
-    return 418;
-  }
-  return 404;
-}
-
-###
-### Internal location for /authorize.php and /update.php restricted access.
-###
-location @allowupdate {
-  limit_conn   limreq 88;
-  tcp_nopush   off;
-  keepalive_requests 0;
-  access_log   off;
-  try_files    $uri =404; ### check for existence of php file first
-<?php if ($satellite_mode == 'boa'): ?>
-  fastcgi_pass unix:/var/run/$user_socket.fpm.socket;
-<?php elseif ($phpfpm_mode == 'port'): ?>
-  fastcgi_pass 127.0.0.1:9000;
-<?php else: ?>
-  fastcgi_pass unix:<?php print $phpfpm_socket_path; ?>;
-<?php endif; ?>
-}
-<?php endif; ?>
+### Deny access to /authorize.php and /update.php
+### [ML] SYMBIOTIC Removed - we do not use this and some clients raised
+### concerns about it being accessible to users of a member site, for example.
 
 ###
 ### Deny access to any not listed above php files with 404 error.
