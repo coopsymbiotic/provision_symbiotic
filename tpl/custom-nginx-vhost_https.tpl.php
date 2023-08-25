@@ -26,6 +26,7 @@ else {
 // so if the cert is not available on disk, we do not enable https.
 // This logic should probably be elsewhere and set https_cert_ok to FALSE if not found.
 $https_key_name = '';
+$https_cert_name = '';
 $domain_parts = explode('.', $this->uri);
 
 // Remove the first part, ex: foo.bar.example.org becomes bar.example.org
@@ -40,7 +41,8 @@ while (!empty($domain_parts)) {
 
   if (file_exists("/var/aegir/config/letsencrypt.d/$wildcard_name_test/privkey.pem")) {
     drush_log(dt("Provision Symbiotic: Found :cert exists", [':cert' => $wildcard_name_test]), 'ok');
-    $https_key_name = $wildcard_name_test;
+    $https_key_name = "/var/aegir/config/letsencrypt.d/$wildcard_name_test/privkey.pem";
+    $https_cert_name = "/var/aegir/config/letsencrypt.d/$wildcard_name_test/fullchain.pem";
     break;
   }
 
@@ -50,12 +52,21 @@ while (!empty($domain_parts)) {
 // Support for custom certs from another cert authority
 if (file_exists("/var/aegir/config/letsencrypt.d/{$this->uri}.override/privkey.pem")) {
   drush_log(dt("Provision Symbiotic: Found cert override"), 'ok');
-  $https_key_name = "{$this->uri}.override";
+  $https_key_name = "/var/aegir/config/letsencrypt.d/{$this->uri}.override/privkey.pem";
+  $https_cert_name = "/var/aegir/config/letsencrypt.d/{$this->url}.override/fullchain.pem";
 }
 
 if (!$https_key_name && file_exists("/var/aegir/config/letsencrypt.d/{$this->uri}/privkey.pem")) {
   drush_log(dt("Provision Symbiotic: Found letsencrypt certificate"), 'ok');
-  $https_key_name = $this->uri;
+  $https_key_name = "/var/aegir/config/letsencrypt.d/{$this->uri}/privkey.pem";
+  $https_cert_name = "/var/aegir/config/letsencrypt.d/{$this->uri}/fullchain.pem";
+}
+
+// Classic self-signed cert
+if (!$https_key_name && file_exists("/var/aegir/config/self_signed.d/{$this->uri}/openssl.key")) {
+  drush_log(dt("Provision Symbiotic: Found self-signed certificate"), 'ok');
+  $https_key_name = "/var/aegir/config/self_signed.d/{$this->uri}/openssl.key";
+  $https_cert_name = "/var/aegir/config/self_signed.d/{$this->uri}/openssl.crt";
 }
 
 ?>
@@ -79,8 +90,8 @@ server {
   }
 ?>
 
-  ssl_certificate_key        /var/aegir/config/letsencrypt.d/<?php print $https_key_name; ?>/privkey.pem;
-  ssl_certificate            /var/aegir/config/letsencrypt.d/<?php print $https_key_name; ?>/fullchain.pem;
+  ssl_certificate_key        <?php print $https_key_name; ?>;
+  ssl_certificate            <?php print $https_key_name; ?>;
   ssl_protocols              TLSv1.2 TLSv1.3;
   ssl_ciphers                ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES256-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA:ECDHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA:DES-CBC3-SHA:!aNULL:!eNULL:!LOW:!DES:!MD5:!EXP:!PSK:!SRP:!DSS;
   ssl_ecdh_curve             secp384r1;
