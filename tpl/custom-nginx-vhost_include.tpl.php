@@ -126,7 +126,7 @@ include /data/conf/nginx_high_load.c*;
 ###
 ### Deny not compatible request methods without 405 response.
 ###
-if ( $request_method !~ ^(?:GET|HEAD|POST|PUT|DELETE|OPTIONS|PATCH)$ ) {
+if ( $request_method !~ ^(?:GET|HEAD|POST|PUT|DELETE|OPTIONS)$ ) {
   return 403;
 }
 
@@ -196,7 +196,6 @@ location ^~ /admin/httprl-test {
 ### CDN Far Future expiration support.
 ###
 location ^~ /cdn/farfuture/ {
-  tcp_nodelay   off;
   access_log    off;
   log_not_found off;
 <?php if ($nginx_has_etag): ?>
@@ -204,7 +203,7 @@ location ^~ /cdn/farfuture/ {
 <?php else: ?>
   add_header ETag "";
 <?php endif; ?>
-  gzip_http_version 1.0;
+  gzip_http_version 1.1;
   if_modified_since exact;
   set $nocache_details "Skip";
   location ~* ^/cdn/farfuture/.+\.(?:css|js|jpe?g|gif|png|ico|bmp|svg|swf|pdf|docx?|xlsx?|pptx?|tiff?|txt|rtf|class|otf|ttf|woff2?|eot|less)$ {
@@ -302,8 +301,6 @@ location = /fpm-ping {
 ### for running sites cron.
 ###
 location = /cron.php {
-  tcp_nopush   off;
-  keepalive_requests 0;
 <?php if ($satellite_mode == 'boa'): ?>
   allow        127.0.0.1;
   deny         all;
@@ -473,6 +470,14 @@ location ^~ /civicrm/mosaico/img {
 location ~* ^/\w\w/civicrm/mosaico/img {
   try_files $uri @drupal;
 }
+### SYMBIOTIC - Always cache Contact Images (and multilingual)
+# This is mostly for images exposed by SearchKit
+location ^~ /civicrm/contact/imagefile {
+  try_files $uri @drupal;
+}
+location ~* ^/\w\w/civicrm/contact/imagefile {
+  try_files $uri @drupal;
+}
 
 ### SYMBIOTIC - Do not cache other CiviCRM pages and always log (and multilingual)
 location ^~ /civicrm {
@@ -492,7 +497,6 @@ location ^~ /audio/download {
     if ( $is_bot ) {
       return 403;
     }
-    tcp_nopush off;
     access_log    off;
     log_not_found off;
     set $nocache_details "Skip";
@@ -504,7 +508,7 @@ location ^~ /audio/download {
 ###
 ### Deny listed requests for security reasons.
 ###
-location ~* (\.(?:git.*|htaccess|engine|config|inc|ini|info|install|make|module|profile|test|pl|po|sh|.*sql|theme|tpl(\.php)?|xtmpl|pem|crt)(~|\.sw[op]|\.bak|\.orig|\.save)?$|^(\..*|Entries.*|Repository|Root|Tag|Template|composer\.(json|lock))$|^#.*#$|\.php(~|\.sw[op]|\.bak|\.orig\.save))$ {
+location ~* (\.(?:git.*|htaccess|engine|config|inc|ini|info|install|make|module|profile|test|pl|po|sh|.*sql|theme|tpl(\.php)?|xtmpl)(~|\.sw[op]|\.bak|\.orig|\.save)?$|^(\..*|Entries.*|Repository|Root|Tag|Template|composer\.(json|lock))$|^#.*#$|\.php(~|\.sw[op]|\.bak|\.orig\.save))$ {
   access_log off;
   return 404;
 }
@@ -763,12 +767,18 @@ location ~* \.css$ {
   }
   error_page  405 = @uncached;
   access_log  off;
-  tcp_nodelay off;
   expires     max; #if using aggregator
   add_header Access-Control-Allow-Origin *;
   add_header X-Content-Type-Options nosniff;
   add_header X-XSS-Protection "1; mode=block";
   try_files  /sites/$host/static-html/${uri}.css $uri =404;
+}
+
+###
+### Support for dynamic /sw.js requests. See #2982073 on drupal.org
+###
+location = /sw.js {
+  try_files $uri @drupal;
 }
 
 ###
@@ -783,19 +793,11 @@ location ~* \.(?:js|htc)$ {
   }
   error_page  405 = @uncached;
   access_log  off;
-  tcp_nodelay off;
   expires     max; # if using aggregator
   add_header Access-Control-Allow-Origin *;
   add_header X-Content-Type-Options nosniff;
   add_header X-XSS-Protection "1; mode=block";
   try_files  /sites/$host/static-html/${uri}.js $uri =404;
-}
-
-###
-### Support for dynamic /sw.js requests. See #2982073 on drupal.org
-###
-location = /sw.js {
-  try_files $uri @drupal;
 }
 
 ###
@@ -814,7 +816,6 @@ location ~* ^/sites/.*/files/.*\.json$ {
   }
   error_page  405 = @uncached;
   access_log  off;
-  tcp_nodelay off;
   expires     max; ### if using aggregator
   add_header Access-Control-Allow-Origin *;
   add_header X-Content-Type-Options nosniff;
@@ -846,8 +847,6 @@ location ^~ /files/ {
   ###
   location ~* /files/.+\.flv$ {
     flv;
-    tcp_nodelay off;
-    tcp_nopush off;
     expires 30d;
     access_log    off;
     log_not_found off;
@@ -865,8 +864,6 @@ location ^~ /files/ {
     mp4;
     mp4_buffer_size 1m;
     mp4_max_buffer_size 5m;
-    tcp_nodelay off;
-    tcp_nopush off;
     expires 30d;
     access_log    off;
     log_not_found off;
@@ -903,6 +900,7 @@ location ^~ /files/ {
     # fix common problems with old paths after import from standalone to Aegir multisite
     rewrite ^/files/imagecache/(.*)/sites/default/files/(.*)$ /sites/$main_site_name/files/imagecache/$1/$2 last;
     rewrite ^/files/imagecache/(.*)/files/(.*)$               /sites/$main_site_name/files/imagecache/$1/$2 last;
+    rewrite ^/sites/(.*)/files/imagecache/(.*)/sites/(.*)/files/(.*)$ /sites/$main_site_name/files/imagecache/$2/$4 last;
     set $nocache_details "Skip";
 <?php endif; ?>
     rewrite  ^/files/(.*)$  /sites/$main_site_name/files/$1 last;
@@ -911,7 +909,6 @@ location ^~ /files/ {
 
   location ~* ^.+\.(?:pdf|jpe?g|gif|png|ico|bmp|svg|swf|docx?|xlsx?|pptx?|tiff?|txt|rtf|vcard|vcf|cgi|bat|pl|dll|class|otf|ttf|woff2?|eot|less|avi|mpe?g|mov|wmv|mp3|ogg|ogv|wav|midi|zip|tar|t?gz|rar|dmg|exe|apk|pxl|ipa|css|js)$ {
     expires       30d;
-    tcp_nodelay   off;
     access_log    off;
     log_not_found off;
     rewrite  ^/files/(.*)$  /sites/$main_site_name/files/$1 last;
@@ -930,7 +927,6 @@ location ^~ /files/ {
 location ^~ /downloads/ {
   location ~* ^.+\.(?:pdf|jpe?g|gif|png|ico|bmp|svg|swf|docx?|xlsx?|pptx?|tiff?|txt|rtf|vcard|vcf|cgi|bat|pl|dll|class|otf|ttf|woff2?|eot|less|avi|mpe?g|mov|wmv|mp3|ogg|ogv|wav|midi|zip|tar|t?gz|rar|dmg|exe|apk|pxl|ipa)$ {
     expires       30d;
-    tcp_nodelay   off;
     access_log    off;
     log_not_found off;
     add_header Access-Control-Allow-Origin *;
@@ -952,7 +948,6 @@ location ^~ /downloads/ {
 ###
 location ~* ^.+\.(?:jpe?g|gif|png|ico|bmp|svg|swf|docx?|xlsx?|pptx?|tiff?|txt|rtf|vcard|vcf|cgi|bat|pl|dll|class|otf|ttf|woff2?|eot|less|mp3|wav|midi)$ {
   expires       30d;
-  tcp_nodelay   off;
   access_log    off;
   log_not_found off;
   add_header Access-Control-Allow-Origin *;
@@ -969,8 +964,6 @@ location ~* ^.+\.(?:jpe?g|gif|png|ico|bmp|svg|swf|docx?|xlsx?|pptx?|tiff?|txt|rt
 ###
 location ~* ^.+\.(?:avi|mpe?g|mov|wmv|ogg|ogv|zip|tar|t?gz|rar|dmg|exe|apk|pxl|ipa)$ {
   expires     30d;
-  tcp_nodelay off;
-  tcp_nopush  off;
   access_log    off;
   log_not_found off;
   add_header Access-Control-Allow-Origin *;
@@ -988,7 +981,6 @@ location ~* ^.+\.(?:avi|mpe?g|mov|wmv|ogg|ogv|zip|tar|t?gz|rar|dmg|exe|apk|pxl|i
 ###
 location ~* ^/sites/.+/files/.+\.(?:pdf|aspx?)$ {
   expires       30d;
-  tcp_nodelay   off;
   access_log    off;
   log_not_found off;
   add_header Access-Control-Allow-Origin *;
@@ -1003,8 +995,6 @@ location ~* ^/sites/.+/files/.+\.(?:pdf|aspx?)$ {
 ###
 location ~* ^.+\.flv$ {
   flv;
-  tcp_nodelay off;
-  tcp_nopush off;
   expires 30d;
   access_log    off;
   log_not_found off;
@@ -1021,8 +1011,6 @@ location ~* ^.+\.(?:mp4|m4a)$ {
   mp4;
   mp4_buffer_size 1m;
   mp4_max_buffer_size 5m;
-  tcp_nodelay off;
-  tcp_nopush off;
   expires 30d;
   access_log    off;
   log_not_found off;
@@ -1038,7 +1026,6 @@ location ~* ^.+\.(?:mp4|m4a)$ {
 ###
 location ~* /(?:cross-?domain)\.xml$ {
   access_log  off;
-  tcp_nodelay off;
   expires     30d;
   add_header Access-Control-Allow-Origin *;
   add_header X-Content-Type-Options nosniff;
@@ -1054,8 +1041,6 @@ location ~* /(?:modules|libraries)/(?:contrib/)?(?:ad|tinybrowser|f?ckeditor|tin
 <?php if ($satellite_mode == 'boa'): ?>
   limit_conn   limreq 88;
 <?php endif; ?>
-  tcp_nopush   off;
-  keepalive_requests 0;
   # [ML] SYMBIOTIC - Always log requests to the REST endpoint
   # access_log   off;
   if ( $is_bot ) {
@@ -1096,7 +1081,6 @@ location ~* ^/sites/.*/(?:modules|libraries)/(?:contrib/)?(?:tinybrowser|f?ckedi
     return 403;
   }
   access_log      off;
-  tcp_nodelay     off;
   expires         30d;
   add_header Access-Control-Allow-Origin *;
   add_header X-Content-Type-Options nosniff;
@@ -1109,7 +1093,6 @@ location ~* ^/sites/.*/(?:modules|libraries)/(?:contrib/)?(?:tinybrowser|f?ckedi
 ###
 location ~* ^/sites/.*/files/ {
   access_log      off;
-  tcp_nodelay     off;
   expires         30d;
   add_header Access-Control-Allow-Origin *;
   add_header X-Content-Type-Options nosniff;
@@ -1248,9 +1231,8 @@ location ~ ^/(?<esi>esi/.*)"$ {
   fastcgi_cache_methods GET HEAD;
   fastcgi_cache_min_uses 1;
   fastcgi_cache_key "$scheme$is_bot$device$host$request_method$key_uri$cache_uid$http_x_forwarded_proto$sent_http_x_local_proto$cookie_respimg";
-  fastcgi_cache_valid 200 3s;
-  fastcgi_cache_valid 301 302 0s;
-  fastcgi_cache_valid 403 404 1s;
+  fastcgi_cache_valid 200 10s;
+  fastcgi_cache_valid 301 302 403 404 1s;
   fastcgi_cache_valid any 1s;
   fastcgi_cache_lock on;
   fastcgi_ignore_headers Cache-Control Expires Vary;
@@ -1260,8 +1242,6 @@ location ~ ^/(?<esi>esi/.*)"$ {
   fastcgi_no_cache $cookie_NoCacheID $http_authorization $nocache;
   fastcgi_cache_bypass $cookie_NoCacheID $http_authorization $nocache;
   fastcgi_cache_use_stale error http_500 http_503 invalid_header timeout updating;
-  tcp_nopush off;
-  keepalive_requests 0;
   expires epoch;
 }
 
@@ -1420,7 +1400,6 @@ location = /index.php {
   add_header X-GeoIP-Country-Code "$geoip_country_code";
   add_header X-GeoIP-Country-Name "$geoip_country_name";
 <?php endif; ?>
-<?php if ($nginx_config_mode == 'extended'): ?>
   add_header X-Core-Variant "$core_detected";
   add_header X-Loc-Where "$location_detected";
   add_header X-Http-Pragma "$http_pragma";
@@ -1439,10 +1418,7 @@ location = /index.php {
   add_header Strict-Transport-Security $symbiotic_hsts;
   add_header Content-Security-Policy $symbiotic_security_policy;
 
-<?php endif; ?>
   add_header Cache-Control "no-store, no-cache, must-revalidate, post-check=0, pre-check=0";
-  tcp_nopush    off;
-  keepalive_requests 0;
   try_files     $uri =404; ### check for existence of php file first
 <?php if ($satellite_mode == 'boa'): ?>
   fastcgi_pass  unix:/var/run/$user_socket.fpm.socket;
@@ -1469,9 +1445,9 @@ location = /index.php {
   fastcgi_cache_methods GET HEAD; ### Nginx default, but added for clarity
   fastcgi_cache_min_uses 1;
   fastcgi_cache_key "$scheme$is_bot$device$host$request_method$key_uri$cache_uid$http_x_forwarded_proto$sent_http_x_local_proto$cookie_respimg";
-  fastcgi_cache_valid 200 10s;
-  fastcgi_cache_valid 301 302 0s;
-  fastcgi_cache_valid 403 404 1s;
+  fastcgi_cache_valid 200 60s;
+  fastcgi_cache_valid 301 302 403 404 1s;
+  fastcgi_cache_valid any 1s;
   fastcgi_cache_lock on;
   fastcgi_ignore_headers Cache-Control Expires Vary;
   fastcgi_pass_header Set-Cookie;
@@ -1485,11 +1461,12 @@ location = /index.php {
 
 ###
 ### Send other known php requests/files to php-fpm without any caching.
+### [ML] SYMBIOTIC Removed boost
 ###
 <?php if ($nginx_config_mode == 'extended'): ?>
 location ~* ^/(?:core/)?(?:boost_stats|rtoc|js)\.php$ {
 <?php else: ?>
-location ~* ^/(?:index|cron|boost_stats|update|authorize|xmlrpc)\.php$ {
+location ~* ^/(?:index|cron|update|authorize|xmlrpc)\.php$ {
 <?php endif; ?>
 <?php if ($satellite_mode == 'boa'): ?>
   limit_conn   limreq 88;
@@ -1497,8 +1474,6 @@ location ~* ^/(?:index|cron|boost_stats|update|authorize|xmlrpc)\.php$ {
     return 404;
   }
 <?php endif; ?>
-  tcp_nopush   off;
-  keepalive_requests 0;
   access_log   off;
   try_files    $uri =404; ### check for existence of php file first
 <?php if ($satellite_mode == 'boa'): ?>
@@ -1510,36 +1485,10 @@ location ~* ^/(?:index|cron|boost_stats|update|authorize|xmlrpc)\.php$ {
 <?php endif; ?>
 }
 
-<?php if ($nginx_config_mode == 'extended'): ?>
 ###
-### Allow access to /authorize.php and /update.php only for logged in admin user.
-###
-location ~* ^/(?:core/)?(?:authorize|update)\.php$ {
-  error_page 418 = @allowupdate;
-  if ( $cache_uid ) {
-    return 418;
-  }
-  return 404;
-}
-
-###
-### Internal location for /authorize.php and /update.php restricted access.
-###
-location @allowupdate {
-  limit_conn   limreq 88;
-  tcp_nopush   off;
-  keepalive_requests 0;
-  access_log   off;
-  try_files    $uri =404; ### check for existence of php file first
-<?php if ($satellite_mode == 'boa'): ?>
-  fastcgi_pass unix:/var/run/$user_socket.fpm.socket;
-<?php elseif ($phpfpm_mode == 'port'): ?>
-  fastcgi_pass 127.0.0.1:9000;
-<?php else: ?>
-  fastcgi_pass unix:<?php print $phpfpm_socket_path; ?>;
-<?php endif; ?>
-}
-<?php endif; ?>
+### Deny access to /authorize.php and /update.php
+### [ML] SYMBIOTIC Removed - we do not use this and some clients raised
+### concerns about it being accessible to users of a member site, for example.
 
 ###
 ### Deny access to any not listed above php files with 404 error.
