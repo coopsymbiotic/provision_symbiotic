@@ -489,6 +489,16 @@ location ~* ^/\w\w/civicrm {
   try_files $uri @drupal;
 }
 
+### SYMBIOTIC - URLs used by the CS admin UI
+location ^~ /cs {
+  set $nocache_details "Skip";
+  try_files $uri @drupal;
+}
+location ~* ^/\w\w/cs {
+  set $nocache_details "Skip";
+  try_files $uri @drupal;
+}
+
 ###
 ### Support for audio module.
 ###
