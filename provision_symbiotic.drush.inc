@@ -400,12 +400,14 @@ function drush_provision_symbiotic_cleanup() {
 
   // Start by deleting potentially large log tables
   try {
-    // Keep only 14 days.
+    // Keep only 10-14 days for certain logs
     // https://github.com/lcdservices/biz.lcdservices.joblogmanagement/blob/master/api/v3/JobLog/Purge.php
-    $db->query('DELETE FROM civicrm_job_log WHERE run_time < (NOW() - INTERVAL 14 DAY)');
+    $db->query('DELETE FROM civicrm_job_log WHERE run_time < (NOW() - INTERVAL 10 DAY)');
     // These logging tables can be huge and not particularly relevant
     $db->query('DELETE FROM log_civicrm_mailing WHERE log_date < (NOW() - INTERVAL 14 DAY)');
     $db->query('DELETE FROM log_civicrm_group WHERE log_date < (NOW() - INTERVAL 14 DAY)');
+    // These settings get updated often and are not useful
+    $db->query('DELETE FROM log_civicrm_setting WHERE name IN ("navigation", "resCacheCode")');
   }
   catch (Exception $e) {
     // Probably not a CiviCRM site
