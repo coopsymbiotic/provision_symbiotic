@@ -46,9 +46,15 @@ function provision_symbiotic_drush_command() {
   );
   $items['provision-symbiotic-list-stripe-webhooks'] = array(
     'description' => 'List Stripe webhooks (helps for 6.3.2 upgrades).',
+    'options' => [
+      'filter' => 'Filter domain',
+    ],
   );
   $items['provision-symbiotic-delete-stripe-webhooks'] = array(
     'description' => 'Deletes Stripe webhooks (helps for 6.3.2 upgrades).',
+    'options' => [
+      'filter' => 'Filter domain',
+    ],
   );
 
   return $items;
@@ -568,27 +574,51 @@ function drush_provision_symbiotic_hostmaster_enable_https() {
 }
 
 /**
+ * Helper function to get Stripe webhooks
+ */
+function _provision_symbiotic_get_stripe_webhooks($filter = '') {
+  $return = [];
+  provision_symbiotic_civicrm_init();
+
+  foreach ([false, true] as $is_test) {
+    $result = civicrm_api3('PaymentProcessor', 'get', [
+      'class_name' => 'Payment_Stripe',
+      'is_active' => 1,
+      'is_test' => $is_test,
+      'domain_id' => CRM_Core_Config::domainID(),
+    ]);
+
+    foreach ($result['values'] as $paymentProcessor) {
+      $paymentProcessorId = $paymentProcessor['id'];
+      $processor = new CRM_Core_Payment_Stripe('', civicrm_api3('PaymentProcessor', 'getsingle', ['id' => $paymentProcessorId]));
+      $processor->setAPIParams();
+      $webhooks = \Stripe\WebhookEndpoint::all(["limit" => 100]);
+
+      foreach ($webhooks->data as $wh) {
+        if ($filter) {
+          if (strpos($wh['url'], $filter) !== FALSE) {
+            $return[] = $wh;
+          }
+        }
+        else {
+          $return[] = $wh;
+        }
+      }
+    }
+  }
+
+  return $return;
+}
+
+/**
  * Implements the provision-symbiotic-list-stripe-webhooks
  */
 function drush_provision_symbiotic_list_stripe_webhooks() {
-  provision_symbiotic_civicrm_init();
+  $filter = drush_get_option('filter');
+  $webhooks = _provision_symbiotic_get_stripe_webhooks($filter);
 
-  $result = civicrm_api3('PaymentProcessor', 'get', [
-    'class_name' => 'Payment_Stripe',
-    'is_active' => 1,
-    'domain_id' => CRM_Core_Config::domainID(),
-  ]);
-
-  foreach ($result['values'] as $paymentProcessor) {
-    $paymentProcessorId = $paymentProcessor['id'];
-    $processor = new CRM_Core_Payment_Stripe('', civicrm_api3('PaymentProcessor', 'getsingle', ['id' => $paymentProcessorId]));
-    $processor->setAPIParams();
-
-    $webhooks = \Stripe\WebhookEndpoint::all(["limit" => 100]);
-
-    foreach ($webhooks->data as $wh) {
-      drush_log(print_r($wh, 1), 'ok');
-    }
+  foreach ($webhooks as $wh) {
+    drush_log(print_r($wh, 1), 'ok');
   }
 }
 
@@ -596,25 +626,17 @@ function drush_provision_symbiotic_list_stripe_webhooks() {
  * Implements the provision-symbiotic-delete-stripe-webhooks
  */
 function drush_provision_symbiotic_delete_stripe_webhooks() {
-  provision_symbiotic_civicrm_init();
+  $filter = drush_get_option('filter');
 
-  $result = civicrm_api3('PaymentProcessor', 'get', [
-    'class_name' => 'Payment_Stripe',
-    'is_active' => 1,
-    'domain_id' => CRM_Core_Config::domainID(),
-  ]);
+  if (!$filter) {
+    drush_die('Please provide --filter=example.org to avoid deleting unrelated webhooks.');
+  }
 
-  foreach ($result['values'] as $paymentProcessor) {
-    $paymentProcessorId = $paymentProcessor['id'];
-    $processor = new CRM_Core_Payment_Stripe('', civicrm_api3('PaymentProcessor', 'getsingle', ['id' => $paymentProcessorId]));
-    $processor->setAPIParams();
+  $webhooks = _provision_symbiotic_get_stripe_webhooks($filter);
 
-    $webhooks = \Stripe\WebhookEndpoint::all(["limit" => 100]);
-
-    foreach ($webhooks->data as $wh) {
-      drush_log('Deleting webhook: ' . print_r($wh, 1), 'ok');
-      $wh->delete();
-    }
+  foreach ($webhooks as $wh) {
+    drush_log('Deleting webhook: ' . print_r($wh, 1), 'ok');
+    $wh->delete();
   }
 }
 
