@@ -412,6 +412,7 @@ function drush_provision_symbiotic_cleanup() {
     // These logging tables can be huge and not particularly relevant
     $db->query('DELETE FROM log_civicrm_mailing WHERE log_date < (NOW() - INTERVAL 14 DAY)');
     $db->query('DELETE FROM log_civicrm_group WHERE log_date < (NOW() - INTERVAL 14 DAY)');
+    $db->query('DELETE FROM log_civicrm_activity WHERE log_date < (NOW() - INTERVAL 30 DAY)');
     // These settings get updated often and are not useful
     $db->query('DELETE FROM log_civicrm_setting WHERE name IN ("navigation", "resCacheCode")');
   }
