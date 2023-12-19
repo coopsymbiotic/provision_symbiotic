@@ -197,7 +197,7 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
     // Only update the extensionsDir if not using relative paths
     // @todo This was moved to hosting_civicrm and could be removed here
     // once we update hosting_civicrm everywhere
-    if (strpos($extensionsDir, '[civicrm.files]') === FALSE) {
+    if (strpos($extensionDir, '[civicrm.files]') === FALSE) {
       if (preg_match('/civi-go.net$/', $host)) {
         // iXiam default
         $extensions_suffix = 'files/civicrm/ext';
@@ -205,10 +205,6 @@ function drush_provision_symbiotic_post_provision_verify($url = NULL) {
       elseif (file_exists("$root/sites/$host/modules/extensions/")) {
         // Symbiotic default
         $extensions_suffix = 'modules/extensions';
-      }
-      elseif (file_exists("$root/sites/$host/modules/civi-extensions/")) {
-        // Legacy Symbiotic
-        $extensions_suffix = 'modules/civi-extensions';
       }
       elseif (file_exists("$root/sites/$host/civiext/")) {
         // civicrm.org
