@@ -41,7 +41,7 @@ function provision_symbiotic_provision_apache_vhost_config($uri, $data = null) {
  */
 function provision_symbiotic_provision_nginx_vhost_config($uri, $data = null) {
   // Git repos can be cloned through https
-  $htaccess .= 'location ~ /\.git { return 404; }' . "\n\n";
+  $htaccess = 'location ~ /\.git { return 404; }' . "\n\n";
 
   // Workaround for Moisaico bug
   // https://github.com/veda-consulting/uk.co.vedaconsulting.mosaico/issues/160
