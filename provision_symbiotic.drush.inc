@@ -356,7 +356,7 @@ function drush_provision_symbiotic_civicrm_stats() {
   if ($result) {
     $record = $result->fetch_assoc();
 
-    if ($record['value']) {
+    if (!empty($record['value'])) {
       $langs = unserialize($record['value']);
       $languages = implode('+', array_keys($langs));
       echo $languages;
@@ -743,7 +743,7 @@ function _provision_symbiotic_get_cms() {
     return null;
   }
 
-  // Drupal8 or 9, we identify as 9
+  // Drupal8 or 9 or 10, we identify as 9
   $result = $db->query("SHOW TABLES LIKE 'users_field_data'");
   if ($result && mysqli_num_rows($result) > 0) {
     return 'Drupal9';
