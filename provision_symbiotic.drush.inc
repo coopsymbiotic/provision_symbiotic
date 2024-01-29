@@ -281,8 +281,8 @@ function drush_provision_symbiotic_civicrm_stats_aegir() {
     echo $line_prefix . 'CiviContribute:' . $db->query('SELECT count(*) as x FROM civicrm_contribution WHERE is_test = 0')->fetch_assoc()['x'] . "\n";
     echo $line_prefix . 'CiviMember:' . $db->query('SELECT count(*) as x FROM civicrm_membership WHERE is_test = 0')->fetch_assoc()['x'] . "\n";
     echo $line_prefix . 'CiviMail:' . $db->query('SELECT count(*) as x FROM civicrm_mailing WHERE is_completed=1 AND sms_provider_id IS NULL')->fetch_assoc()['x'] . "\n";
-    echo $line_prefix . 'CiviEvent:' . $db->query('SELECT count(*) as x FROM civicrm_mailing WHERE is_completed=1 AND sms_provider_id IS NOT NULL')->fetch_assoc()['x'] . "\n";
-    echo $line_prefix . 'CiviParticipant:' . $db->query('SELECT count(*) as x FROM civicrm_case WHERE is_deleted = 0')->fetch_assoc()['x'] . "\n";
+    echo $line_prefix . 'CiviSms:' . $db->query('SELECT count(*) as x FROM civicrm_mailing WHERE is_completed=1 AND sms_provider_id IS NOT NULL')->fetch_assoc()['x'] . "\n";
+    echo $line_prefix . 'CiviCase:' . $db->query('SELECT count(*) as x FROM civicrm_case WHERE is_deleted = 0')->fetch_assoc()['x'] . "\n";
     echo $line_prefix . 'CiviEvent:' . $db->query('SELECT count(*) as x FROM civicrm_event')->fetch_assoc()['x'] . "\n";
     echo $line_prefix . 'CiviParticipant:' . $db->query('SELECT count(*) as x FROM civicrm_participant WHERE is_test = 0')->fetch_assoc()['x'] . "\n";
   }
