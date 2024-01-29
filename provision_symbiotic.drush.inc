@@ -30,9 +30,13 @@ function provision_symbiotic_drush_command() {
       'gid' => 'Option Group ID',
     ],
   );
+  $items['provision-symbiotic-civicrm-stats-aegir'] = array(
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
+    'description' => 'Prints to stdout CiviCRM stats for the aegir-weekly script',
+  );
   $items['provision-symbiotic-civicrm-stats'] = array(
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
-    'description' => 'Returns the total number of CiviCRM contacts, activities, contributions, memberships, mailings, cases, events and participants',
+    'description' => '(deprecated) Returns the total number of CiviCRM contacts, activities, contributions, memberships, mailings, cases, events and participants',
   );
   $items['provision-symbiotic-last-login'] = array(
     'description' => 'Returns the last login time from a user (excluding uid=1).',
@@ -254,7 +258,64 @@ function drush_provision_symbiotic_role_permission($rid, $permission) {
 }
 
 /**
- * Callback for provision-symbiotic-civicrm-stats
+ * Callback for provision-symbiotic-civicrm-stats-aegir
+ *
+ * Prints the total number of CiviCRM contacts, activities, contributions,
+ * memberships, mailings, cases, events and event participants.. in the
+ * format expected by the aegir-weekly script (which in turn, in read by
+ * the hosting_usage Aegir module to display stats to Aegir admins).
+ */
+function drush_provision_symbiotic_civicrm_stats_aegir() {
+  $db = provision_symbiotic_db_connect();
+
+  if ($db->connect_errno) {
+    return;
+  }
+
+  $line_prefix = 'aegir,' . d()->uri . ',';
+
+  try {
+    echo $line_prefix . 'Users:' . $db->query('SELECT count(*) as x FROM users WHERE uid > 1')->fetch_assoc()['x'] . "\n";
+    echo $line_prefix . 'CiviContact:' . $db->query('SELECT count(*) as x FROM civicrm_contact WHERE is_deleted = 0')->fetch_assoc()['x'] . "\n";
+    echo $line_prefix . 'CiviActivity:' . $db->query('SELECT count(*) as x FROM civicrm_activity WHERE is_test = 0 AND is_deleted = 0 AND is_current_revision = 1')->fetch_assoc()['x'] . "\n";
+    echo $line_prefix . 'CiviContribute:' . $db->query('SELECT count(*) as x FROM civicrm_contribution WHERE is_test = 0')->fetch_assoc()['x'] . "\n";
+    echo $line_prefix . 'CiviMember:' . $db->query('SELECT count(*) as x FROM civicrm_membership WHERE is_test = 0')->fetch_assoc()['x'] . "\n";
+    echo $line_prefix . 'CiviMail:' . $db->query('SELECT count(*) as x FROM civicrm_mailing WHERE is_completed=1 AND sms_provider_id IS NULL')->fetch_assoc()['x'] . "\n";
+    echo $line_prefix . 'CiviEvent:' . $db->query('SELECT count(*) as x FROM civicrm_mailing WHERE is_completed=1 AND sms_provider_id IS NOT NULL')->fetch_assoc()['x'] . "\n";
+    echo $line_prefix . 'CiviParticipant:' . $db->query('SELECT count(*) as x FROM civicrm_case WHERE is_deleted = 0')->fetch_assoc()['x'] . "\n";
+    echo $line_prefix . 'CiviEvent:' . $db->query('SELECT count(*) as x FROM civicrm_event')->fetch_assoc()['x'] . "\n";
+    echo $line_prefix . 'CiviParticipant:' . $db->query('SELECT count(*) as x FROM civicrm_participant WHERE is_test = 0')->fetch_assoc()['x'] . "\n";
+  }
+  catch (Exception $e) {
+    // Probably not a CiviCRM site
+    return;
+  }
+
+  // Fetch the payment processors used
+  $processors = _provision_symbiotic_get_payment_processors();
+  echo $line_prefix . 'CiviPaymentProcessors:' . implode('+', $processors) . "\n";
+
+  // Fetch the available languages
+  // Depending on if multilingual or not, one of these should be valid
+  $result = $db->query("SELECT value FROM civicrm_setting WHERE name IN ('uiLanguages','languageLimit') and value is not null");
+
+  if ($result) {
+    $record = $result->fetch_assoc();
+
+    if (!empty($record['value'])) {
+      $langs = unserialize($record['value']);
+      $languages = implode('+', array_keys($langs));
+      echo $line_prefix . 'CiviLanguages:' . $languages . "\n";
+    }
+  }
+
+  // Fetch the last login
+  $last = _provision_symbiotic_last_login();
+  echo $line_prefix . 'LastLogin:' . $last . "\n";
+}
+
+/**
+ * Callback for provision-symbiotic-civicrm-stats (deprecated)
  *
  * Returns the total number of CiviCRM contacts, activities, contributions,
  * memberships, mailings, cases, events and event participants.
