@@ -489,6 +489,19 @@ location ~* ^/\w\w/civicrm {
   try_files $uri @drupal;
 }
 
+### SYMBIOTIC - Do not cache other CH/DMS pages and always log
+location ^~ /dms {
+  set $nocache_details "Skip";
+  try_files $uri @drupal;
+}
+# Always cache images
+location ^~ /dms/mosaico/img {
+  try_files $uri @drupal;
+}
+location ^~ /civicrm/contact/imagefile {
+  try_files $uri @drupal;
+}
+
 ### SYMBIOTIC - URLs used by the CS admin UI
 location ^~ /cs {
   set $nocache_details "Skip";
