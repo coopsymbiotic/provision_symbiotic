@@ -180,7 +180,6 @@ server {
     } ?>;
   root          <?php print "{$this->root}"; ?>;
 
-  ssl                        on;
   ssl_certificate_key        <?php print $https_key_name; ?>;
   ssl_certificate            <?php print $https_cert_name; ?>;
   ssl_protocols              TLSv1.2 TLSv1.3;
