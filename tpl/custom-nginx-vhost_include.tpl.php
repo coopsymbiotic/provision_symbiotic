@@ -498,7 +498,7 @@ location ^~ /dms {
 location ^~ /dms/mosaico/img {
   try_files $uri @drupal;
 }
-location ^~ /civicrm/contact/imagefile {
+location ^~ /dms/contact/imagefile {
   try_files $uri @drupal;
 }
 
