@@ -12,6 +12,7 @@ function provision_symbiotic_drush_command() {
     'description' => 'Hide active CiviCRM Status Alerts.',
     'options' => [
       'severity' => 'The severity of active alerts to ignore. Ex: info, warning, critical. Defaults to warning.',
+      'name' => 'The name of the check to ignore.',
     ],
     'aliases' => ['civihush'],
   );
@@ -217,20 +218,20 @@ function provision_symbiotic_db_connect() {
  *
  * Hush CiviCRM alerts.
  */
-function drush_provision_symbiotic_hush_alerts($severity = 'warning', $name = NULL) {
+function drush_provision_symbiotic_hush_alerts() {
   if (!provision_symbiotic_civicrm_init()) {
     return;
   }
 
   // The function param does not seem to work, perhaps because it's an old drush version
+  $severity = 'warning';
   if ($option = drush_get_option('severity')) {
     $severity = $option;
   }
 
   $hush = ['checkDirVariables', 'checkUrlVariables', 'checkPhpVersion', 'checkVersion', 'checkDirsWritable', 'checkIndices', 'checkPriceFields', 'extensionUpdates', 'checkVersion_upgrade', 'checkExtensionsUpdates'];
-
-  if (!empty($name)) {
-    $hush = explode(',', $name);
+  if ($option = drush_get_option('name')) {
+    $hush = explode(',', $option);
   }
 
   foreach ($hush as $h) {
