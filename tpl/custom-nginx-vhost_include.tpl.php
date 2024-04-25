@@ -553,9 +553,18 @@ location ~* ^/sites/.*/files/civicrm/(?:ConfigAndLog|custom|upload|templates_c) 
 }
 
 ###
-### Deny listed requests for security-by-obscurity reasons.
+### Deny listed requests for security reasons.
 ###
 location = /CHANGELOG.txt {
+  return 404;
+}
+location = /composer.json {
+  return 404;
+}
+location = /composer.lock {
+  return 404;
+}
+location ^~ /vendor/composer/ {
   return 404;
 }
 
