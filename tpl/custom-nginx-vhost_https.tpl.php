@@ -53,7 +53,7 @@ while (!empty($domain_parts)) {
 if (file_exists("/var/aegir/config/letsencrypt.d/{$this->uri}.override/privkey.pem")) {
   drush_log(dt("Provision Symbiotic: Found cert override"), 'ok');
   $https_key_name = "/var/aegir/config/letsencrypt.d/{$this->uri}.override/privkey.pem";
-  $https_cert_name = "/var/aegir/config/letsencrypt.d/{$this->url}.override/fullchain.pem";
+  $https_cert_name = "/var/aegir/config/letsencrypt.d/{$this->uri}.override/fullchain.pem";
 }
 
 if (!$https_key_name && file_exists("/var/aegir/config/letsencrypt.d/{$this->uri}/privkey.pem")) {
