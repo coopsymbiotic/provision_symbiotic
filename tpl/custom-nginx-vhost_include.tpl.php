@@ -512,6 +512,9 @@ location ~* ^/\w\w/cs {
   try_files $uri @drupal;
 }
 
+### SYMBIOTIC - Workaround for drush bug and CiviCRM Spark signups
+rewrite ^/usr/local/bin/user/reset/(.*)$ /user/reset/$1 redirect;
+
 ###
 ### Support for audio module.
 ###
