@@ -125,7 +125,8 @@ function provision_symbiotic_provision_nginx_vhost_config($uri, $data = null) {
   }
 
   // D8 extern support
-  if (drush_drupal_major_version() >= 8) {
+  $drupal_core_version = provision_get_drupal_core_version();
+  if ($drupal_core_version && version_compare($drupal_core_version, 8, '>=')) {
     // Depends on Aegir 7.x-3.152: https://www.drupal.org/project/provision/issues/2791095#comment-12717109
     // See also: https://www.drupal.org/project/provision/issues/3000599
     $phpfpm_socket_path = Provision_Service_http_nginx::getPhpFpmSocketPath();
