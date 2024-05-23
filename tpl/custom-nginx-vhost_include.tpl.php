@@ -630,7 +630,7 @@ location ~* /(?:.+)/files/styles/adaptive/(?:.+)$ {
 ###
 ### The files/styles support.
 ###
-location ~* /sites/.*/files/styles/(.*)$ {
+location ~* /sites/.*/files/(css|js|styles)/(.*)$ {
   access_log off;
   log_not_found off;
   expires    30d;
@@ -640,7 +640,7 @@ location ~* /sites/.*/files/styles/(.*)$ {
 <?php if ($nginx_config_mode == 'extended'): ?>
   set $nocache_details "Skip";
 <?php endif; ?>
-  try_files  /sites/$main_site_name/files/styles/$1 $uri @drupal;
+  try_files  /sites/$main_site_name/files/$1/$2 $uri @drupal;
 }
 
 ###
