@@ -186,9 +186,6 @@ if ($site_id == 'template' && strpos($host, 'template') === FALSE && strpos($hos
   civicrm_api3('Setting', 'create', ['domain_id' => 'all', 'site_id' => $sid]);
 }
 
-// Flush cache
-civicrm_api3('System', 'flush');
-
 // We can't auto-configure sites without a token.
 // This includes the model site, the hostmaster, or sites not managed through hosting_restapi.
 if (!$hosting_restapi_token && !Civi::settings()->get('hosting_restapi_token')) {
