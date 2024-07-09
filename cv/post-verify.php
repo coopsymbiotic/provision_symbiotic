@@ -8,6 +8,7 @@
 $root = $argv[1];
 $host = $argv[2];
 $site_path = $argv[3];
+// @todo Probably not useful anymore (fetched from the Ansible inventory)
 $hosting_restapi_token = $argv[4] ?? NULL;
 $hosting_restapi_hostmaster = $argv[5] ?? NULL;
 
@@ -186,19 +187,6 @@ if ($site_id == 'template' && strpos($host, 'template') === FALSE && strpos($hos
   civicrm_api3('Setting', 'create', ['domain_id' => 'all', 'site_id' => $sid]);
 }
 
-// We can't auto-configure sites without a token.
-// This includes the model site, the hostmaster, or sites not managed through hosting_restapi.
-if (!$hosting_restapi_token && !Civi::settings()->get('hosting_restapi_token')) {
-  $output[] = 'CiviCRM: no hosting_restapi_token, returning';
-  echo json_encode($output);
-  return;
-}
-
-if (!Civi::settings()->get('hosting_restapi_token')) {
-  Civi::settings()->set('hosting_restapi_token', $hosting_restapi_token);
-  Civi::settings()->set('hosting_restapi_hostmaster', $hosting_restapi_hostmaster);
-}
-
 // The "verify" task can run regularly. Check to make sure we only run once,
 // after the initial clone.
 if (Civi::settings()->get('hosting_restapi_initial_done')) {
@@ -207,9 +195,23 @@ if (Civi::settings()->get('hosting_restapi_initial_done')) {
   return;
 }
 
-// Request the site configuration
-$token = Civi::settings()->get('hosting_restapi_token');
-$hostmaster =  Civi::settings()->get('hosting_restapi_hostmaster');
+// Fetch the token from the Ansible inventory, because we are trying to avoid relying on Aegir
+// the inventory is considered to be secret (it also has CiviCRM site keys, etc).
+$hostmaster = Civi::settings()->get('hosting_restapi_hostmaster');
+$result = file_get_contents($hostmaster . '/inventory');
+$data = json_decode($result, TRUE);
+$token = $data['_meta']['hostvars'][$host]['hosting_restapi_token'] ?? NULL;
+
+// We can't auto-configure sites without a token.
+// This includes the model site, the hostmaster, or sites not managed through hosting_restapi.
+if (!$token) {
+  $output[] = 'CiviCRM: no hosting_restapi_token, returning';
+  echo json_encode($output);
+  return;
+}
+
+// Not sure if necessary
+Civi::settings()->set('hosting_restapi_token', $token);
 
 // @todo Below has not been tested on Drupal9+ or other CMS
 if (CIVICRM_UF != 'Drupal') {
@@ -218,7 +220,8 @@ if (CIVICRM_UF != 'Drupal') {
   return;
 }
 
-$result = drupal_http_request($hostmaster . '/hosting/api/site/config?url=' . $host . '&token=' . $token);
+// Request the site configuration
+$result = file_get_contents($hostmaster . '/hosting/api/site/config?url=' . $host . '&token=' . $token);
 $config = json_decode($result->data, TRUE);
 
 if (!empty($config['status']) && $config['status'] == 'error') {
@@ -227,7 +230,9 @@ if (!empty($config['status']) && $config['status'] == 'error') {
   return;
 }
 
-variable_set('site_name', $config['data']['site']['name']);
+if (function_exists('variable_set')) {
+  variable_set('site_name', $config['data']['site']['name']);
+}
 
 # [ML] provision_spark sets no-reply-foo and this makes sense for symbiotic too,
 # because we don't have an SMTP provider setup at this point.
