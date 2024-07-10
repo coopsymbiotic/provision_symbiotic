@@ -3,22 +3,34 @@
 ## SymbioTIC override from provision_symbiotic
 ## Original file: provision/http/Provision/Config/Nginx/Inc/vhost_include.tpl.php
 
-$script_user = drush_get_option('script_user');
+$script_user = d('@server_master')->script_user;
+if (!$script_user) {
+  $script_user = drush_get_option('script_user');
+}
 if (!$script_user && $server->script_user) {
   $script_user = $server->script_user;
 }
 
-$aegir_root = drush_get_option('aegir_root');
+$aegir_root = d('@server_master')->aegir_root;
+if (!$aegir_root) {
+  $aegir_root = drush_get_option('aegir_root');
+}
 if (!$aegir_root && $server->aegir_root) {
   $aegir_root = $server->aegir_root;
 }
 
-$nginx_config_mode = drush_get_option('nginx_config_mode');
+$nginx_config_mode = d('@server_master')->nginx_config_mode;
+if (!$nginx_config_mode) {
+  $nginx_config_mode = drush_get_option('nginx_config_mode');
+}
 if (!$nginx_config_mode && $server->nginx_config_mode) {
   $nginx_config_mode = $server->nginx_config_mode;
 }
 
-$phpfpm_mode = drush_get_option('phpfpm_mode');
+$phpfpm_mode = d('@server_master')->phpfpm_mode;
+if (!$phpfpm_mode) {
+  $phpfpm_mode = drush_get_option('phpfpm_mode');
+}
 if (!$phpfpm_mode && $server->phpfpm_mode) {
   $phpfpm_mode = $server->phpfpm_mode;
 }
@@ -27,22 +39,34 @@ if (!$phpfpm_mode && $server->phpfpm_mode) {
 // See Provision_Service_http_nginx_ssl for details.
 $phpfpm_socket_path = Provision_Service_http_nginx::getPhpFpmSocketPath();
 
-$nginx_is_modern = drush_get_option('nginx_is_modern');
+$nginx_is_modern = d('@server_master')->nginx_is_modern;
+if (!$nginx_is_modern) {
+  $nginx_is_modern = drush_get_option('nginx_is_modern');
+}
 if (!$nginx_is_modern && $server->nginx_is_modern) {
   $nginx_is_modern = $server->nginx_is_modern;
 }
 
-$nginx_has_etag = drush_get_option('nginx_has_etag');
+$nginx_has_etag = d('@server_master')->nginx_has_etag;
+if (!$nginx_has_etag) {
+  $nginx_has_etag = drush_get_option('nginx_has_etag');
+}
 if (!$nginx_has_etag && $server->nginx_has_etag) {
   $nginx_has_etag = $server->nginx_has_etag;
 }
 
-$nginx_has_http2 = drush_get_option('nginx_has_http2');
+$nginx_has_http2 = d('@server_master')->nginx_has_http2;
+if (!$nginx_has_http2) {
+  $nginx_has_http2 = drush_get_option('nginx_has_http2');
+}
 if (!$nginx_has_http2 && $server->nginx_has_http2) {
   $nginx_has_http2 = $server->nginx_has_http2;
 }
 
-$nginx_has_gzip = drush_get_option('nginx_has_gzip');
+$nginx_has_gzip = d('@server_master')->nginx_has_gzip;
+if (!$nginx_has_gzip) {
+  $nginx_has_gzip = drush_get_option('nginx_has_gzip');
+}
 if (!$nginx_has_gzip && $server->nginx_has_gzip) {
   $nginx_has_gzip = $server->nginx_has_gzip;
 }
@@ -52,7 +76,10 @@ if (!$nginx_has_upload_progress && $server->nginx_has_upload_progress) {
   $nginx_has_upload_progress = $server->nginx_has_upload_progress;
 }
 
-$satellite_mode = drush_get_option('satellite_mode');
+$satellite_mode = d('@server_master')->satellite_mode;
+if (!$satellite_mode) {
+  $satellite_mode = drush_get_option('satellite_mode');
+}
 if (!$satellite_mode && $server->satellite_mode) {
   $satellite_mode = $server->satellite_mode;
 }
@@ -125,7 +152,7 @@ include /data/conf/nginx_high_load.c*;
 
 ###
 ### Deny not compatible request methods without 405 response.
-### PATCH is required for CH-DMS
+### SYMBIOTIC: PATCH is required for CH-DMS
 ###
 if ( $request_method !~ ^(?:GET|HEAD|POST|PUT|DELETE|OPTIONS|PATCH)$ ) {
   return 403;
@@ -148,7 +175,7 @@ add_header X-XSS-Protection "1; mode=block";
 
 <?php if ($satellite_mode == 'boa'): ?>
 ###
-### Force clean URLs for Drupal 8.
+### Force clean URLs for Drupal 8+.
 ###
 rewrite ^/index.php/(.*)$ $scheme://$host/$1 permanent;
 
@@ -207,7 +234,7 @@ location ^~ /cdn/farfuture/ {
   gzip_http_version 1.1;
   if_modified_since exact;
   set $nocache_details "Skip";
-  location ~* ^/cdn/farfuture/.+\.(?:css|js|jpe?g|gif|png|ico|bmp|svg|swf|pdf|docx?|xlsx?|pptx?|tiff?|txt|rtf|class|otf|ttf|woff2?|eot|less)$ {
+  location ~* ^/cdn/farfuture/.+\.(?:css|js|jpe?g|gif|png|ico|webp|bmp|svg|swf|pdf|docx?|xlsx?|pptx?|tiff?|txt|rtf|class|otf|ttf|woff2?|eot|less)$ {
     expires max;
     add_header X-Header "CDN Far Future Generator 1.0";
     add_header Cache-Control "no-transform, public";
@@ -318,7 +345,7 @@ location = /cron.php {
 
 ###
 ### Allow local access to support wget method in Aegir settings
-### for running sites cron in Drupal 8.
+### for running sites cron in Drupal 8+.
 ###
 location ^~ /cron/ {
 <?php if ($satellite_mode == 'boa'): ?>
@@ -534,7 +561,7 @@ location ^~ /audio/download {
 ###
 ### Deny listed requests for security reasons.
 ###
-location ~* (\.(?:git.*|htaccess|engine|config|inc|ini|info|install|make|module|profile|test|pl|po|sh|.*sql|theme|tpl(\.php)?|xtmpl)(~|\.sw[op]|\.bak|\.orig|\.save)?$|^(\..*|Entries.*|Repository|Root|Tag|Template|composer\.(json|lock))$|^#.*#$|\.php(~|\.sw[op]|\.bak|\.orig\.save))$ {
+location ~* (\.(?:git.*|htaccess|engine|config|inc|ini|info|install|make|module|profile|test|pl|po|sh|.*sql|theme|twig|tpl(\.php)?|xtmpl|yml)(~|\.sw[op]|\.bak|\.orig|\.save)?$|^(\..*|Entries.*|Repository|Root|Tag|Template|composer\.(json|lock))$|^#.*#$|\.php(~|\.sw[op]|\.bak|\.orig\.save))$ {
   access_log off;
   return 404;
 }
@@ -700,7 +727,7 @@ location ~* ^/sites/.*/files/backup_migrate/ {
 }
 
 ###
-### Deny direct access to config files in Drupal 8.
+### Deny direct access to config files in Drupal 8+.
 ###
 location ~* ^/sites/.*/files/config_.* {
   access_log off;
@@ -942,7 +969,7 @@ location ^~ /files/ {
     try_files  /sites/$main_site_name/files/imagecache/$1 $uri @drupal;
   }
 
-  location ~* ^.+\.(?:pdf|jpe?g|gif|png|ico|bmp|svg|pub|csv|docx?|xlsx?|pptx?|tiff?|txt|rtf|vcard|vcf|cgi|class|otf|ttf|woff2?|eot|less|avi|mpe?g|mov|wmv|mp3|wav|zip|tar|t?gz|apk|pxl|ipa|css|js)$ {
+  location ~* ^.+\.(?:pdf|jpe?g|gif|png|ico|webp|bmp|svg|pub|csv|docx?|xlsx?|pptx?|tiff?|txt|rtf|vcard|vcf|cgi|class|otf|ttf|woff2?|eot|less|avi|mpe?g|mov|wmv|mp3|wav|zip|tar|t?gz|apk|pxl|ipa|css|js)$ {
     expires       30d;
     access_log    off;
     log_not_found off;
@@ -960,7 +987,7 @@ location ^~ /files/ {
 ### Map /downloads/ shortcut early to avoid overrides in other locations.
 ###
 location ^~ /downloads/ {
-  location ~* ^.+\.(?:pdf|jpe?g|gif|png|ico|bmp|svg|swf|docx?|xlsx?|pptx?|tiff?|txt|rtf|vcard|vcf|cgi|bat|pl|dll|class|otf|ttf|woff2?|eot|less|avi|mpe?g|mov|wmv|mp3|ogg|ogv|wav|midi|zip|tar|t?gz|rar|dmg|exe|apk|pxl|ipa)$ {
+  location ~* ^.+\.(?:pdf|jpe?g|gif|png|ico|webp|bmp|svg|swf|docx?|xlsx?|pptx?|tiff?|txt|rtf|vcard|vcf|cgi|bat|pl|dll|class|otf|ttf|woff2?|eot|less|avi|mpe?g|mov|wmv|mp3|ogg|ogv|wav|midi|zip|tar|t?gz|rar|dmg|exe|apk|pxl|ipa)$ {
     expires       30d;
     access_log    off;
     log_not_found off;
@@ -981,7 +1008,7 @@ location ^~ /downloads/ {
 ### Serve & no-log static files & images directly,
 ### without all standard drupal rewrites, php-fpm etc.
 ###
-location ~* ^.+\.(?:jpe?g|gif|png|ico|bmp|svg|swf|docx?|xlsx?|pptx?|tiff?|txt|rtf|vcard|vcf|cgi|bat|pl|dll|class|otf|ttf|woff2?|eot|less|mp3|wav|midi)$ {
+location ~* ^.+\.(?:jpe?g|gif|png|ico|webp|bmp|svg|swf|docx?|xlsx?|pptx?|tiff?|txt|rtf|vcard|vcf|cgi|bat|pl|dll|class|otf|ttf|woff2?|eot|less|mp3|wav|midi)$ {
   expires       30d;
   access_log    off;
   log_not_found off;
@@ -997,7 +1024,7 @@ location ~* ^.+\.(?:jpe?g|gif|png|ico|bmp|svg|swf|docx?|xlsx?|pptx?|tiff?|txt|rt
 ### Serve bigger media/static/archive files directly,
 ### without all standard drupal rewrites, php-fpm etc.
 ###
-location ~* ^.+\.(?:avi|mpe?g|mov|wmv|ogg|ogv|zip|tar|t?gz|rar|dmg|exe|apk|pxl|ipa)$ {
+location ~* ^.+\.(?:avi|mpe?g|mov|wmv|ogg|ogv|webm|zip|tar|t?gz|rar|dmg|exe|apk|pxl|ipa)$ {
   expires     30d;
   access_log    off;
   log_not_found off;
@@ -1308,7 +1335,7 @@ location / {
 
 <?php if ($nginx_config_mode == 'extended'): ?>
 ###
-### Check for static pages (previously Boost compatiblity, with some changes)
+### Boost compatible cache check.
 ###
 location @cache {
   if ( $request_method = POST ) {
@@ -1327,12 +1354,10 @@ location @cache {
     set $nocache_details "AegirCookie";
     return 405;
   }
-  # [ML] SYMBIOTIC Intentionally skipping this check, because the pages are
-  # more likely generated by something else than Drupal.
-  # if ( $cache_uid ) {
-  #   set $nocache_details "DrupalCookie";
-  #   return 405;
-  # }
+  if ( $cache_uid ) {
+    set $nocache_details "DrupalCookie";
+    return 405;
+  }
   error_page 405 = @drupal;
   add_header X-Symbiotic "Static HTML in sites/x/static-html setup by provision_symbiotic";
   # [ML] SYMBIOTIC This is a bit too aggressive
@@ -1354,11 +1379,12 @@ location @cache {
 ### Send all not cached requests to drupal with clean URLs support.
 ###
 location @drupal {
+  ###
+  ### Detect Drupal core variant
+  ###
   set $core_detected "Legacy";
   set $location_detected "Nowhere";
-  ###
-  ### Detect
-  ###
+
   if ( -e $document_root/web.config ) {
     set $core_detected "Regular";
   }
@@ -1385,10 +1411,10 @@ location @drupal {
     return 419;
   }
   ###
-  ### Fallback
+  ### Fallback to regular / D7 style rewrite
   ###
   set $location_detected "Fallback";
-  rewrite ^ /index.php?$query_string last;
+  rewrite ^ /index.php?$query_string? last;
 }
 
 ###
@@ -1404,11 +1430,11 @@ location @legacy {
 ###
 location @regular {
   set $location_detected "Regular";
-  rewrite ^ /index.php?$query_string last;
+  rewrite ^ /index.php?$query_string? last;
 }
 
 ###
-### Special location for Drupal 8.
+### Special location for Drupal 8+.
 ###
 location @modern {
   set $location_detected "Modern";
