@@ -185,6 +185,7 @@ $site_id = CRM_Utils_System::getSiteID();
 if ($site_id == 'template' && strpos($host, 'template') === FALSE && strpos($host, 'modele') === FALSE) {
   $sid = md5('sid_' . time() . $host);
   civicrm_api3('Setting', 'create', ['domain_id' => 'all', 'site_id' => $sid]);
+  Civi::settings()->set('hosting_restapi_initial_done', 0);
 }
 
 // The "verify" task can run regularly. Check to make sure we only run once,
@@ -222,7 +223,7 @@ if (CIVICRM_UF != 'Drupal') {
 
 // Request the site configuration
 $result = file_get_contents($hostmaster . '/hosting/api/site/config?url=' . $host . '&token=' . $token);
-$config = json_decode($result->data, TRUE);
+$config = json_decode($result, TRUE);
 
 if (!empty($config['status']) && $config['status'] == 'error') {
   $output[] = 'Symbiotic: warning: failed to fetch data about the site: ' . print_r($config, 1);
