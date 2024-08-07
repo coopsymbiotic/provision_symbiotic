@@ -155,11 +155,13 @@ function provision_symbiotic_provision_nginx_vhost_config($uri, $data = null) {
 function drush_provision_symbiotic_post_provision_verify($url = NULL) {
   if (d()->type === 'site') {
     drush_log('provision_symbiotic: drush_provision_symbiotic_post_provision_verify start', 'ok');
-    $output = _provision_civicrm_run_cv_command('php:script ' . __DIR__ . '/cv/post-verify.php ' . implode(' ', array_map('escapeshellarg', [
-      d()->root, d()->uri, d()->site_path, d()->hosting_restapi_token, d()->hosting_restapi_hostmaster,
-    ])));
-    foreach ($output as $line) {
-      drush_log('provision_symbiotic: ' . $line, strpos($line, 'warning') === FALSE ? 'ok' : 'warning');
+    if (file_exists(d()->site_path . '/civicrm.settings.php')) {
+      $output = _provision_civicrm_run_cv_command('php:script ' . __DIR__ . '/cv/post-verify.php ' . implode(' ', array_map('escapeshellarg', [
+        d()->root, d()->uri, d()->site_path, d()->hosting_restapi_token, d()->hosting_restapi_hostmaster,
+      ])));
+      foreach ($output as $line) {
+        drush_log('provision_symbiotic: ' . $line, strpos($line, 'warning') === FALSE ? 'ok' : 'warning');
+      }
     }
     drush_log('provision_symbiotic: drush_provision_symbiotic_post_provision_verify end', 'ok');
   }
