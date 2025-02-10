@@ -42,7 +42,10 @@ function _provision_symbiotic_is_dev_site($host) {
   if (preg_match('/\.www-test\./', $host)) {
     return TRUE;
   }
-  if (preg_match('/test.*makoa.net/', $host)) {
+  if (preg_match('/\.test\.makoa\.net/', $host)) {
+    return TRUE;
+  }
+  if (preg_match('/\.dev\.makoa\.net/', $host)) {
     return TRUE;
   }
   if (preg_match('/test.*-dms/', $host)) {
