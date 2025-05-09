@@ -202,7 +202,7 @@ if (Civi::settings()->get('hosting_restapi_initial_done')) {
 // Fetch the token from the Ansible inventory, because we are trying to avoid relying on Aegir
 // the inventory is considered to be secret (it also has CiviCRM site keys, etc).
 $hostmaster = Civi::settings()->get('hosting_restapi_hostmaster');
-$result = file_get_contents($hostmaster . '/inventory');
+$result = file_get_contents($hostmaster . '/inventory?include_disabled=1');
 $data = json_decode($result, TRUE);
 $token = $data['_meta']['hostvars'][$host]['hosting_restapi_token'] ?? NULL;
 
