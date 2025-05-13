@@ -300,6 +300,11 @@ if (!empty($account)) {
   $onetime = user_pass_reset_url($account) . '/login';
   $onetime = preg_replace('/http:/', 'https:', $onetime);
 
+  // Workaround weird new 2025-05 bug, where the hostname is empty
+  if (!preg_match('/^http/', $onetime)) {
+    $onetime = 'https://' . $_SERVER['HTTP_HOST'] . $onetime;
+  }
+
   $result = drupal_http_request($hostmaster . '/hosting/api/site/welcome', [
     'method' => 'POST',
     'data' => [
