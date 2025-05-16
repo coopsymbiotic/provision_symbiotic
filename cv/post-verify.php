@@ -8,9 +8,6 @@
 $root = $argv[1];
 $host = $argv[2];
 $site_path = $argv[3];
-// @todo Probably not useful anymore (fetched from the Ansible inventory)
-$hosting_restapi_token = $argv[4] ?? NULL;
-$hosting_restapi_hostmaster = $argv[5] ?? NULL;
 
 $output = [];
 
